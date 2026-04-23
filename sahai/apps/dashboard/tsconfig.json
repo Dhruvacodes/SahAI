@@ -21,7 +21,8 @@
     ],
     "resolveJsonModule": true,
     "strict": true,
-    "target": "es5"
+    "target": "es5",
+    "skipLibCheck": true
   },
   "include": [
     "next-env.d.ts",
@@ -33,4 +34,3 @@
     "node_modules"
   ]
 }
-

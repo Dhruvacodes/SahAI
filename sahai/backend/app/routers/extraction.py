@@ -38,7 +38,7 @@ class ExtractionResponse(BaseModel):
 @router.post("/extract", response_model=ExtractionResponse)
 async def extract_transcript_health_data(
     request: ExtractionRequest,
-) -> ExtractionResponse | JSONResponse:
+) -> ExtractionResponse:
     """Extract vitals, symptoms, and complaint text from a transcript.
 
     Args:
@@ -84,4 +84,3 @@ async def extract_transcript_health_data(
         symptoms=symptoms,
         patientComplaint=patient_complaint,
     )
-

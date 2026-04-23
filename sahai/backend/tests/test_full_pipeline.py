@@ -60,16 +60,16 @@ async def test_full_visit_pipeline() -> None:
         return_value=build_openai_client_mock(transcript_text),
     ), patch(
         "app.services.extraction_service.anthropic.Anthropic",
-        return_value=build_anthropic_client_mock(extracted_payload),
+        side_effect=[
+            build_anthropic_client_mock(extracted_payload),
+            build_anthropic_client_mock(referral_payload),
+        ],
     ), patch(
         "app.services.extraction_service.anthropic.AsyncAnthropic",
-        return_value=build_anthropic_client_mock(extracted_payload),
-    ), patch(
-        "app.services.referral_service.anthropic.Anthropic",
-        return_value=build_anthropic_client_mock(referral_payload),
-    ), patch(
-        "app.services.referral_service.anthropic.AsyncAnthropic",
-        return_value=build_anthropic_client_mock(referral_payload),
+        side_effect=[
+            build_anthropic_client_mock(extracted_payload),
+            build_anthropic_client_mock(referral_payload),
+        ],
     ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:

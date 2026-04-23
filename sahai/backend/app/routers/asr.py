@@ -16,7 +16,7 @@ router = APIRouter(tags=["asr"])
 async def transcribe_uploaded_audio(
     audio_file: UploadFile | None = File(None),
     language_code: str | None = Form(None),
-) -> dict[str, str | int] | JSONResponse:
+) -> dict[str, object]:
     """Transcribe an uploaded audio file using the selected ASR language.
 
     Args:
