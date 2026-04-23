@@ -1,0 +1,20 @@
+# Dependency directories
+node_modules/
+.venv/
+venv/
+
+# Build outputs
+.next/
+dist/
+build/
+__pycache__/
+*.py[cod]
+
+# Environment files
+.env
+.env.local
+
+# Local tooling
+.expo/
+.DS_Store
+
