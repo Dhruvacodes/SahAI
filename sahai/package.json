@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "node scripts/patch-expo-cli-node-builtins.js",
     "mobile": "npm --workspace apps/mobile run start",
     "dashboard": "npm --workspace apps/dashboard run dev"
   }

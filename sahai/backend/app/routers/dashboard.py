@@ -12,6 +12,10 @@ from app.models.visit import VisitORM
 
 router = APIRouter(tags=["dashboard"])
 
+DEMO_SUPERVISION_MAP = {
+    "anm-demo": ["asha-savitri", "asha-meena", "asha-priya"],
+}
+
 
 class TopRiskPatient(BaseModel):
     """High-risk patient summary row for the dashboard table."""
@@ -132,7 +136,7 @@ async def get_district_heatmap(
 
 def _get_supervised_asha_ids(anm_id: str) -> list[str]:
     """Return ASHA identifiers supervised by an ANM in the current scaffold."""
-    return [anm_id]
+    return DEMO_SUPERVISION_MAP.get(anm_id, [anm_id])
 
 
 def _seven_days_ago() -> datetime:
