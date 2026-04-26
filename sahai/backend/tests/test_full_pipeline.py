@@ -14,6 +14,21 @@ from scripts.demo_transcripts import DEMO_TRANSCRIPTS
 pytestmark = pytest.mark.asyncio
 
 
+CONSENT_SNAPSHOT = {
+    "consentGiven": True,
+    "privacyNoticeAccepted": True,
+    "consentVersion": "sahai-consent-v1",
+    "languageCode": "hi",
+    "dataUseScopes": [
+        "transcription",
+        "ai_extraction",
+        "risk_assessment",
+        "referral_generation",
+        "same_language_readback",
+    ],
+}
+
+
 @pytest.mark.asyncio
 async def test_full_visit_pipeline() -> None:
     """Run the critical visit flow from ASR through referral generation with mocked AI SDKs."""
@@ -75,7 +90,10 @@ async def test_full_visit_pipeline() -> None:
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             asr_response = await client.post(
                 "/api/asr/transcribe",
-                data={"language_code": critical_demo["language"]},
+                data={
+                    "language_code": critical_demo["language"],
+                    "consent_json": json.dumps(CONSENT_SNAPSHOT),
+                },
                 files={"audio_file": ("critical_bp.m4a", b"fake audio bytes", "audio/mp4")},
             )
             assert asr_response.status_code == 200
@@ -84,7 +102,12 @@ async def test_full_visit_pipeline() -> None:
 
             extraction_response = await client.post(
                 "/api/extract",
-                json={"transcript": asr_payload["transcript"], "visitId": "visit-critical-001"},
+                json={
+                    "transcript": asr_payload["transcript"],
+                    "visitId": "visit-critical-001",
+                    "languageCode": "hi",
+                    "consent": CONSENT_SNAPSHOT,
+                },
             )
             assert extraction_response.status_code == 200
             extraction_json = extraction_response.json()
@@ -99,6 +122,7 @@ async def test_full_visit_pipeline() -> None:
                         "gestationalWeek": 32,
                         "ageYears": 26,
                     },
+                    "consent": CONSENT_SNAPSHOT,
                 },
             )
             assert risk_response.status_code == 200
@@ -120,12 +144,34 @@ async def test_full_visit_pipeline() -> None:
                     "riskFlags": risk_json["flags"],
                     "ashaName": "Savitri Devi",
                     "outputLanguage": "hi",
+                    "consent": CONSENT_SNAPSHOT,
                 },
             )
             assert referral_response.status_code == 200
             referral_json = referral_response.json()
             assert referral_json["referralText"]
             assert referral_json["urgency"] == "EMERGENCY"
+
+
+@pytest.mark.asyncio
+async def test_extraction_requires_consent() -> None:
+    """Reject AI extraction before explicit patient consent is recorded."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post(
+            "/api/extract",
+            json={
+                "transcript": "BP is 150 over 95 and patient reports swelling.",
+                "visitId": "visit-no-consent",
+                "languageCode": "hi",
+                "consent": {
+                    **CONSENT_SNAPSHOT,
+                    "consentGiven": False,
+                },
+            },
+        )
+
+    assert response.status_code == 403
 
 
 def build_openai_client_mock(transcript_text: str) -> SimpleNamespace:

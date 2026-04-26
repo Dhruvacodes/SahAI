@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.visit import VisitORM
+from app.schemas.privacy import ConsentSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,8 @@ class VisitRecordSchema(BaseModel):
     rawTranscriptText: str
     extractedVitals: ExtractedVitalsSchema
     symptoms: list[str]
+    consent: ConsentSnapshot
+    languageCode: str = "hi"
     riskScore: int
     riskLevel: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
     referralGenerated: bool
@@ -128,6 +131,8 @@ def _visit_to_orm_data(visit: VisitRecordSchema) -> dict[str, Any]:
         "rawTranscriptText": visit.rawTranscriptText,
         "extractedVitals": _model_to_dict(visit.extractedVitals),
         "symptoms": visit.symptoms,
+        "consent": _model_to_dict(visit.consent),
+        "languageCode": visit.languageCode,
         "riskScore": visit.riskScore,
         "riskLevel": visit.riskLevel,
         "referralGenerated": visit.referralGenerated,

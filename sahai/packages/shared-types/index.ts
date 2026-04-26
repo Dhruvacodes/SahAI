@@ -59,6 +59,26 @@ export interface ExtractedVitals {
 }
 
 /**
+ * Patient consent captured before privacy-sensitive processing.
+ */
+export interface ConsentSnapshot {
+  /** Whether the patient explicitly granted consent for the current workflow. */
+  consentGiven: boolean;
+  /** Whether the privacy notice was explained and accepted. */
+  privacyNoticeAccepted: boolean;
+  /** Consent text/version used when consent was captured. */
+  consentVersion: string;
+  /** Language used to explain consent and read back patient guidance. */
+  languageCode: string;
+  /** Data-use scopes approved by the patient. */
+  dataUseScopes: string[];
+  /** Timestamp when consent was recorded, if available. */
+  recordedAt?: string;
+  /** Optional patient-entered or ASHA-confirmed acknowledgement name. */
+  patientSignatureName?: string;
+}
+
+/**
  * Represents a documented field visit and its clinical decision-support output.
  */
 export interface VisitRecord {
@@ -86,6 +106,10 @@ export interface VisitRecord {
   followUpPlan: string;
   /** Whether this visit record has been synced to cloud storage. */
   syncedToCloud: boolean;
+  /** Consent snapshot attached to this visit record. */
+  consent: ConsentSnapshot;
+  /** Visit language used for same-language output. */
+  languageCode: string;
 }
 
 /**

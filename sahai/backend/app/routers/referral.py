@@ -3,9 +3,11 @@
 from datetime import datetime, timezone
 from typing import Any, List, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.schemas.privacy import ConsentSnapshot
+from app.services.consent_service import ConsentValidationError, validate_consent
 from app.services.referral_service import generate_referral
 
 router = APIRouter(tags=["referral"])
@@ -23,7 +25,8 @@ class ReferralRequest(BaseModel):
     riskLevel: str
     riskFlags: List[str]
     ashaName: str
-    outputLanguage: Literal["en", "hi"] = "hi"
+    outputLanguage: str = "hi"
+    consent: ConsentSnapshot
 
 
 class ReferralResponse(BaseModel):
@@ -45,6 +48,11 @@ async def generate_visit_referral(request: ReferralRequest) -> ReferralResponse:
     Returns:
         Referral text, follow-up plan, urgency level, and UTC generation timestamp.
     """
+    try:
+        validate_consent(_model_to_dict(request.consent), "referral_generation")
+    except ConsentValidationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     referral = await generate_referral(
         _model_to_dict(request),
         request.outputLanguage,

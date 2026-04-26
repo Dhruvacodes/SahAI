@@ -44,7 +44,7 @@ def calculate_risk_score(vitals: dict, patient: dict) -> dict:
 
     if _at_least(systolic, 160) or _at_least(diastolic, 110):
         score += 40
-        flags.append("Severe hypertension — IMMEDIATE referral")
+        flags.append("Severe hypertension - IMMEDIATE referral")
 
     if _at_least(systolic, 140) or _at_least(diastolic, 90):
         score += 25
@@ -56,7 +56,7 @@ def calculate_risk_score(vitals: dict, patient: dict) -> dict:
 
     if oedema is True and is_pregnant:
         score += 20
-        flags.append("Oedema in pregnancy — pre-eclampsia risk")
+        flags.append("Oedema in pregnancy - pre-eclampsia risk")
 
     if oedema is True and not is_pregnant:
         score += 10
@@ -72,11 +72,11 @@ def calculate_risk_score(vitals: dict, patient: dict) -> dict:
 
     if fetal_movements is False and gestational_week is not None and gestational_week >= 28:
         score += 30
-        flags.append("Absent fetal movements — EMERGENCY")
+        flags.append("Absent fetal movements - EMERGENCY")
 
     if is_pregnant and age_years is not None and age_years < 18:
         score += 10
-        flags.append("Adolescent pregnancy — high risk")
+        flags.append("Adolescent pregnancy - high risk")
 
     if is_pregnant and age_years is not None and age_years > 35:
         score += 5

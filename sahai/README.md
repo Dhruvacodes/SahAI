@@ -1,6 +1,6 @@
 # Sahai
 
-Sahai is a monorepo containing an Expo mobile app, a Next.js dashboard, shared TypeScript interfaces, and a FastAPI backend.
+Sahai contains a consent-first Expo mobile demo, a Next.js dashboard, shared TypeScript interfaces, and a FastAPI backend for ASHA-assisted field workflows.
 
 ## Structure
 
@@ -14,14 +14,32 @@ sahai/
 └── backend/
 ```
 
-## Apps
-
-- `apps/mobile` is prepared for an Expo React Native TypeScript app created from the `blank-typescript` template.
-- `apps/dashboard` is prepared for a Next.js TypeScript dashboard using the App Router and Tailwind CSS.
-- `packages/shared-types` contains interfaces shared by the mobile app, dashboard, and backend-facing client code.
-- `backend` contains a FastAPI application with routers, models, schemas, services, and database modules.
-
 ## Setup
 
-Dependencies have not been installed. Install them later from the relevant workspace when you are ready to run each app.
+The apps intentionally install independently so the Expo mobile app can use React 19 while the dashboard stays on React 18.
 
+```powershell
+npm install
+npm --prefix apps/mobile install
+npm --prefix apps/dashboard install
+```
+
+## Run
+
+```powershell
+npm --prefix apps/mobile run start -- --lan
+npm --prefix apps/dashboard run dev
+```
+
+For the backend:
+
+```powershell
+cd backend
+python -m uvicorn app.main:app --reload
+```
+
+## Notes
+
+- `apps/mobile` runs locally on a phone through Expo and does not require the backend for the demo workflow.
+- The backend enforces consent snapshots before transcription, extraction, risk scoring, and referral generation.
+- The default Claude model is configured with `ANTHROPIC_MODEL=claude-sonnet-4-6`.

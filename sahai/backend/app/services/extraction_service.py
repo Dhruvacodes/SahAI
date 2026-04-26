@@ -9,6 +9,8 @@ import anthropic
 from dotenv import load_dotenv
 
 from app.services.extraction_prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from app.services.language_policy import normalize_language_code
+from app.services.model_policy import selected_claude_model
 
 load_dotenv()
 
@@ -52,11 +54,12 @@ class ExtractionServiceError(Exception):
         self.status_code = status_code
 
 
-async def extract_health_data(transcript: str) -> dict[str, Any]:
+async def extract_health_data(transcript: str, language_code: str = "hi") -> dict[str, Any]:
     """Extract structured health data from a transcript using Claude.
 
     Args:
         transcript: Raw ASHA visit transcript text.
+        language_code: Requested language code for any patient-facing text fields.
 
     Returns:
         A validated dictionary containing extracted vitals, symptoms, risk, and follow-up data.
@@ -70,16 +73,21 @@ async def extract_health_data(transcript: str) -> dict[str, Any]:
         raise ExtractionServiceError("ANTHROPIC_API_KEY is not configured", 503)
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
+    normalized_language_code = normalize_language_code(language_code)
 
     try:
         response = await client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=500,
+            model=selected_claude_model().model_id,
+            max_tokens=700,
+            temperature=0,
             system=SYSTEM_PROMPT,
             messages=[
                 {
                     "role": "user",
-                    "content": USER_PROMPT_TEMPLATE.format(transcript=transcript),
+                    "content": USER_PROMPT_TEMPLATE.format(
+                        language_code=normalized_language_code,
+                        payload=json.dumps({"transcript": transcript}, ensure_ascii=False),
+                    ),
                 }
             ],
         )

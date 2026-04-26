@@ -2,10 +2,12 @@
 
 from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.schemas.privacy import ConsentSnapshot
+from app.services.consent_service import ConsentValidationError, validate_consent
 from app.services.extraction_service import (
     ExtractionParseError,
     ExtractionServiceError,
@@ -20,6 +22,8 @@ class ExtractionRequest(BaseModel):
 
     transcript: str = Field(..., min_length=10, max_length=5000)
     visitId: str
+    languageCode: str = "hi"
+    consent: ConsentSnapshot
 
 
 class ExtractionResponse(BaseModel):
@@ -48,9 +52,13 @@ async def extract_transcript_health_data(
         Flattened extraction response or a structured error response.
     """
     _ = request.visitId
+    try:
+        validate_consent(_model_to_dict(request.consent), "ai_extraction")
+    except ConsentValidationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     try:
-        extracted_data = await extract_health_data(request.transcript)
+        extracted_data = await extract_health_data(request.transcript, request.languageCode)
     except ExtractionParseError as exc:
         return JSONResponse(
             status_code=422,
@@ -84,3 +92,11 @@ async def extract_transcript_health_data(
         symptoms=symptoms,
         patientComplaint=patient_complaint,
     )
+
+
+def _model_to_dict(model: BaseModel) -> dict:
+    """Convert a Pydantic model to a dictionary across Pydantic versions."""
+    if hasattr(model, "model_dump"):
+        return model.model_dump()
+
+    return model.dict()

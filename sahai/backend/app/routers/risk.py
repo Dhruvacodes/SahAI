@@ -2,10 +2,12 @@
 
 from typing import Any, List, Literal, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.routers.extraction import ExtractionResponse
+from app.schemas.privacy import ConsentSnapshot
+from app.services.consent_service import ConsentValidationError, validate_consent
 from app.services.risk_engine import calculate_risk_score
 
 RECOMMENDED_ACTIONS = {
@@ -31,6 +33,7 @@ class RiskRequest(BaseModel):
 
     vitals: ExtractionResponse
     patient: PatientRiskProfile
+    consent: ConsentSnapshot
 
 
 class RiskResponse(BaseModel):
@@ -52,6 +55,11 @@ async def score_visit_risk(request: RiskRequest) -> RiskResponse:
     Returns:
         Risk score, severity level, triggered flags, and a recommended action.
     """
+    try:
+        validate_consent(_model_to_dict(request.consent), "risk_assessment")
+    except ConsentValidationError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
     risk_result = calculate_risk_score(
         _model_to_dict(request.vitals),
         _model_to_dict(request.patient),

@@ -21,6 +21,8 @@ class VisitORM(Base):
     rawTranscriptText: Mapped[str] = mapped_column(Text, nullable=False, default="")
     extractedVitals: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     symptoms: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    consent: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    languageCode: Mapped[str] = mapped_column(String, nullable=False, default="hi")
     riskScore: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     riskLevel: Mapped[str] = mapped_column(String, nullable=False, index=True)
     referralGenerated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

@@ -3,14 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "Monorepo for the Sahai mobile app, dashboard, shared types, and FastAPI backend.",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "postinstall": "node scripts/patch-expo-cli-node-builtins.js",
-    "mobile": "npm --workspace apps/mobile run start",
-    "dashboard": "npm --workspace apps/dashboard run dev"
+    "mobile": "npm --prefix apps/mobile run start",
+    "dashboard": "npm --prefix apps/dashboard run dev",
+    "install:all": "npm install && npm --prefix apps/mobile install && npm --prefix apps/dashboard install"
   }
 }
 
