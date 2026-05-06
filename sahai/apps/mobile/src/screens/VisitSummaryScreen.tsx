@@ -12,13 +12,16 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FirstResponseChecklist } from "../components/FirstResponseChecklist";
+import { OverrideButton } from "../components/OverrideButton";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { ReadbackButton } from "../components/ReadbackButton";
 import { RiskBanner } from "../components/RiskBanner";
 import { VitalsCard } from "../components/VitalsCard";
+import { WhyThisBandPanel } from "../components/WhyThisBandPanel";
 import { generateReferral } from "../data/api";
 import { buildConsentForPatient } from "../data/consent";
-import { usePatientStore } from "../data/patientStore";
+import { getDisplayName, usePatientStore } from "../data/patientStore";
 import { useSettingsStore } from "../data/settingsStore";
 import { flushSyncQueue, useSyncStore } from "../data/syncQueue";
 import { useVisitStore } from "../data/visitStore";
@@ -30,7 +33,7 @@ import type { ScreenProps } from "../nav/routes";
 import type { RiskLevel, Visit } from "../types";
 
 export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSummary">) {
-  const { patientId, visitId, rawTranscriptText, extraction } = route.params;
+  const { patientId, visitId, rawTranscriptText, extraction, readOnly = false } = route.params;
   const { t, lang } = useT();
   const patient = usePatientStore((s) => s.getById(patientId));
   const ashaId = useSettingsStore((s) => s.ashaId);
@@ -49,9 +52,13 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
     return riskAction(extraction.riskLevel, t);
   }, [extraction.riskLevel, t]);
 
+  // Worker-facing readback follows the active UI language, not the patient's
+  // recorded language. The ASHA hears confirmation in *her* language; patient-
+  // facing audio (when shown to the patient directly) goes through a separate
+  // path that honours patient.languageCode.
   const readbackText = useMemo(
-    () => buildReadback(extraction, patient?.languageCode ?? lang),
-    [extraction, patient?.languageCode, lang],
+    () => buildReadback(extraction, lang),
+    [extraction, lang],
   );
 
   const isUnclear =
@@ -94,6 +101,9 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
       const referral = await generateReferral({
         extraction,
         ashaFacilityInfo: { name: patient.village ?? undefined },
+        // Patient-facing instruction stays in the patient's recorded language —
+        // the worker hands the phone to the patient on the Referral screen.
+        languageCode: patient.languageCode,
       });
       const visit = (await onSave()) as Visit | null;
       if (!visit) return;
@@ -130,7 +140,7 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
           <ChevronLeft color={colors.inkSoft} size={22} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.who}>{patient.name}</Text>
+          <Text style={styles.who}>{getDisplayName(patient, lang)}</Text>
           <Text style={styles.where}>{t("summaryTitle")}</Text>
         </View>
       </View>
@@ -168,10 +178,10 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
           </View>
           <ReadbackButton
             text={readbackText}
-            languageCode={patient.languageCode}
+            languageCode={lang}
             playLabel={t("summaryRepeatReadback")}
             stopLabel={t("summaryStop")}
-            autoplay={!isUnclear}
+            autoplay={!isUnclear && !readOnly}
           />
         </View>
 
@@ -193,7 +203,28 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
           </View>
         )}
 
-        {(extraction.riskLevel === "HIGH" || extraction.riskLevel === "CRITICAL") && (
+        <FirstResponseChecklist
+          visitId={visitId}
+          actions={extraction.firstResponseActions}
+          languageCode={lang}
+        />
+
+        <WhyThisBandPanel
+          firedRules={extraction.firedRules}
+          catalogVersion={extraction.catalogVersion}
+        />
+
+        {!readOnly && (
+          <OverrideButton
+            visitId={visitId}
+            patientId={patient.id}
+            ashaId={ashaId || patient.ashaId}
+            engineLevel={extraction.riskLevel}
+            languageCode={lang}
+          />
+        )}
+
+        {!readOnly && (extraction.riskLevel === "HIGH" || extraction.riskLevel === "CRITICAL") && (
           <PrimaryButton
             label={t("summaryGenerateReferral")}
             variant="primary"
@@ -205,18 +236,20 @@ export function VisitSummaryScreen({ route, navigation }: ScreenProps<"VisitSumm
           <Text style={[typography.body, { color: colors.danger }]}>{referralError}</Text>
         )}
 
-        <PrimaryButton
-          label={saved ? t("saved") : t("summarySaveVisit")}
-          variant={
-            saved
-              ? "secondary"
-              : extraction.riskLevel === "HIGH" || extraction.riskLevel === "CRITICAL"
+        {!readOnly && (
+          <PrimaryButton
+            label={saved ? t("saved") : t("summarySaveVisit")}
+            variant={
+              saved
                 ? "secondary"
-                : "primary"
-          }
-          onPress={onSaveAndExit}
-          disabled={referralLoading}
-        />
+                : extraction.riskLevel === "HIGH" || extraction.riskLevel === "CRITICAL"
+                  ? "secondary"
+                  : "primary"
+            }
+            onPress={onSaveAndExit}
+            disabled={referralLoading}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );

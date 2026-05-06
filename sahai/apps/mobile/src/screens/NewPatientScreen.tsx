@@ -44,6 +44,7 @@ export function NewPatientScreen({ navigation }: ScreenProps<"NewPatient">) {
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
+  const [nameLatin, setNameLatin] = useState<string | undefined>(undefined);
   const [age, setAge] = useState("");
   const [village, setVillage] = useState("");
   const [phone, setPhone] = useState("");
@@ -109,6 +110,7 @@ export function NewPatientScreen({ navigation }: ScreenProps<"NewPatient">) {
           const llm = await extractDemographics(transcriptText, lang);
           parsed = {
             name: parsed.name ?? llm.name ?? undefined,
+            nameLatin: parsed.nameLatin ?? llm.nameLatin ?? undefined,
             ageYears: parsed.ageYears ?? llm.ageYears ?? undefined,
             village: parsed.village ?? llm.village ?? undefined,
             phone: parsed.phone ?? llm.phone ?? undefined,
@@ -124,6 +126,7 @@ export function NewPatientScreen({ navigation }: ScreenProps<"NewPatient">) {
       }
 
       if (parsed.name) setName(parsed.name);
+      if (parsed.nameLatin) setNameLatin(parsed.nameLatin);
       if (parsed.ageYears != null) setAge(String(parsed.ageYears));
       if (parsed.village) setVillage(parsed.village);
       if (parsed.phone) setPhone(parsed.phone);
@@ -152,6 +155,7 @@ export function NewPatientScreen({ navigation }: ScreenProps<"NewPatient">) {
       id: uuidv4(),
       ashaId: ashaId || "asha-local",
       name: name.trim(),
+      nameLatin: nameLatin?.trim() || undefined,
       ageYears: parseIntSafe(age),
       isPregnant: pregnant,
       gestationalWeeks: parseIntSafe(weeks),

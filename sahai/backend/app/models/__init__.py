@@ -6,6 +6,7 @@ from app.models.audit_event import AuditEventORM
 from app.models.cost_event import CostEventORM
 from app.models.anm_supervisor import ANMSupervisorORM
 from app.models.patient import PatientORM
+from app.models.severe_case_alert import SevereCaseAlertORM
 
 __all__ = [
     "VisitORM",
@@ -14,4 +15,5 @@ __all__ = [
     "CostEventORM",
     "ANMSupervisorORM",
     "PatientORM",
+    "SevereCaseAlertORM",
 ]

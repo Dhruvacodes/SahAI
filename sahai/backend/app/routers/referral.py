@@ -1,9 +1,9 @@
-"""API routes for generating referral notes — smart routing: template vs Sonnet."""
+"""API routes for generating referral notes — protocol-engine driven with optional Haiku polish."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, List, Literal, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -33,6 +33,9 @@ class ReferralResponse(BaseModel):
     facilityType: Optional[str] = None
     followUpPlan: Optional[dict] = None
     firstResponseActions: Optional[List[str]] = None
+    # Phase 4: rule-citation provenance and ANM-facing one-line summary.
+    firedRuleIds: Optional[List[str]] = None
+    clinicalSummary: Optional[str] = None
     generatedAt: str
 
 
@@ -41,15 +44,13 @@ async def generate_visit_referral(
     request: ReferralRequest,
     db: Session = Depends(get_db),
 ) -> ReferralResponse:
-    """Generate a referral note with smart routing: template or Sonnet."""
-    # Build risk_result from extraction if not provided
-    risk_result = request.riskResult
-    if not risk_result:
-        risk_result = {
-            "level": request.extraction.get("riskLevel", "LOW"),
-            "score": request.extraction.get("riskScore", 0.1),
-            "flags": request.extraction.get("riskFlags", []),
-        }
+    """Generate a referral note via the protocol engine (with optional Haiku polish)."""
+    risk_result = request.riskResult or {
+        "level": request.extraction.get("riskLevel", "LOW"),
+        "score": request.extraction.get("riskScore", 0.1),
+        "flags": request.extraction.get("riskFlags", []),
+        "firedRules": request.extraction.get("firedRules", []),
+    }
 
     referral = await generate_referral(
         extraction=request.extraction,
@@ -58,28 +59,49 @@ async def generate_visit_referral(
         asha_facility_info=request.ashaFacilityInfo,
     )
 
-    # Cost log if Sonnet was used
-    meta = referral.get("_meta", {})
-    if meta.get("source") == "sonnet":
-        log_cost(db,
+    meta = referral.get("_meta") or {}
+    source = meta.get("source", "template")
+    fired_rule_ids = referral.get("firedRuleIds") or []
+
+    # Cost log: only when we actually called Haiku for the polish layer.
+    if "haiku_polish" in source:
+        log_cost(
+            db,
             endpoint="/api/referral/generate",
             provider="anthropic",
-            model=meta.get("model", "claude-sonnet-4-6"),
+            model=meta.get("model", "claude-haiku-4-5-20251001"),
             input_tokens=meta.get("input_tokens", 0),
             output_tokens=meta.get("output_tokens", 0),
             cached_input_tokens=meta.get("cached_input_tokens", 0),
         )
 
-    # Audit
-    log_event(db,
-        actor_id="system", actor_role="SYSTEM",
+    log_event(
+        db,
+        actor_id="system",
+        actor_role="SYSTEM",
         event_type="REFERRAL_GENERATED",
         payload_summary={
-            "source": meta.get("source", "template"),
+            "source": source,
             "riskLevel": risk_result["level"],
             "urgency": referral.get("urgency"),
+            "firedRuleCount": len(fired_rule_ids),
         },
     )
+
+    # Surface catalog gaps as a separate audit event so rule authors can
+    # spot missing protocols without having to grep through REFERRAL_GENERATED.
+    if meta.get("catalog_gap"):
+        log_event(
+            db,
+            actor_id="system",
+            actor_role="SYSTEM",
+            event_type="CATALOG_GAP",
+            payload_summary={
+                "visitType": request.extraction.get("visitType"),
+                "riskLevel": risk_result["level"],
+                "riskFlags": meta.get("risk_flags") or risk_result.get("flags", []),
+            },
+        )
 
     return ReferralResponse(
         referralText=referral.get("referralText", ""),
@@ -89,5 +111,7 @@ async def generate_visit_referral(
         facilityType=referral.get("facilityType"),
         followUpPlan=referral.get("followUpPlan"),
         firstResponseActions=referral.get("firstResponseActions"),
+        firedRuleIds=fired_rule_ids,
+        clinicalSummary=referral.get("clinicalSummary"),
         generatedAt=datetime.now(timezone.utc).isoformat(),
     )

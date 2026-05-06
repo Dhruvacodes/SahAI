@@ -127,7 +127,31 @@ export type StringKey =
   | "newPatientSpeakAll"
   // Errors
   | "errorNetwork"
-  | "errorTryAgain";
+  | "errorTryAgain"
+  // Inbox / supervisor feedback
+  | "inboxTitle"
+  | "inboxEmpty"
+  | "inboxStatusNew"
+  | "inboxStatusAcknowledged"
+  | "inboxStatusDispatched"
+  | "inboxStatusResolved"
+  | "inboxEtaMinutes"
+  | "inboxAnmReply"
+  // Why this band? + override + checklist
+  | "rationaleTitle"
+  | "rationaleSource"
+  | "rationaleNoRules"
+  | "checklistTitle"
+  | "checklistEmpty"
+  | "checklistMarkDone"
+  | "overrideButton"
+  | "overrideTitle"
+  | "overrideHint"
+  | "overrideReasonLow"
+  | "overrideReasonHigh"
+  | "overrideReasonOther"
+  | "overrideSubmit"
+  | "overrideSaved";
 
 type Strings = Record<StringKey, string>;
 
@@ -254,6 +278,30 @@ const hi: Strings = {
 
   errorNetwork: "इंटरनेट से नहीं जुड़ पा रही। ऑफ़लाइन सहेजा गया।",
   errorTryAgain: "कुछ गड़बड़ हुई। फिर से कोशिश करें।",
+
+  inboxTitle: "ANM से अपडेट",
+  inboxEmpty: "अभी कोई अपडेट नहीं है।",
+  inboxStatusNew: "भेजा गया",
+  inboxStatusAcknowledged: "ANM ने देख लिया",
+  inboxStatusDispatched: "देखभाल भेजी गई",
+  inboxStatusResolved: "मामला बंद",
+  inboxEtaMinutes: "{minutes} मिनट में पहुँचेगी",
+  inboxAnmReply: "ANM का संदेश",
+
+  rationaleTitle: "यह स्तर क्यों?",
+  rationaleSource: "स्रोत",
+  rationaleNoRules: "किसी प्रोटोकॉल नियम ने इसे नहीं उठाया।",
+  checklistTitle: "पहले ये करें",
+  checklistEmpty: "कोई तत्काल कार्य नहीं।",
+  checklistMarkDone: "हो गया",
+  overrideButton: "क्या यह स्तर सही नहीं है?",
+  overrideTitle: "ASHA की राय दर्ज करें",
+  overrideHint: "आप क्यों मानती हैं कि यह स्तर अलग है?",
+  overrideReasonLow: "मरीज़ ठीक दिख रहा है",
+  overrideReasonHigh: "हालत खराब है, ज़्यादा गंभीर है",
+  overrideReasonOther: "और कारण",
+  overrideSubmit: "भेजें",
+  overrideSaved: "धन्यवाद। आपकी राय दर्ज हुई।",
 };
 
 const en: Strings = {
@@ -377,6 +425,30 @@ const en: Strings = {
 
   errorNetwork: "Cannot reach the server. Saved offline.",
   errorTryAgain: "Something went wrong. Try again.",
+
+  inboxTitle: "Updates from ANM",
+  inboxEmpty: "No updates yet.",
+  inboxStatusNew: "Sent to supervisor",
+  inboxStatusAcknowledged: "ANM acknowledged",
+  inboxStatusDispatched: "Care dispatched",
+  inboxStatusResolved: "Resolved",
+  inboxEtaMinutes: "ETA {minutes} min",
+  inboxAnmReply: "ANM note",
+
+  rationaleTitle: "Why this band?",
+  rationaleSource: "Source",
+  rationaleNoRules: "No protocol rule fired for this visit.",
+  checklistTitle: "First-response checklist",
+  checklistEmpty: "No immediate actions required.",
+  checklistMarkDone: "Done",
+  overrideButton: "Disagree with this band?",
+  overrideTitle: "Record your override",
+  overrideHint: "Tell us why you think the band is wrong",
+  overrideReasonLow: "Patient looks well in person",
+  overrideReasonHigh: "Patient is worse than the data shows",
+  overrideReasonOther: "Other reason",
+  overrideSubmit: "Submit",
+  overrideSaved: "Thank you. Your note has been recorded.",
 };
 
 export const STRINGS: Record<"hi" | "en", Strings> = { hi, en };

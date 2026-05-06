@@ -12,9 +12,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BigMicButton } from "../components/BigMicButton";
 import { extractClinical, transcribeAudio } from "../data/api";
 import { buildConsentForPatient } from "../data/consent";
-import { usePatientStore } from "../data/patientStore";
+import { getDisplayName, usePatientStore } from "../data/patientStore";
 import { uuidv4 } from "../data/uuid";
 import { useT } from "../i18n/useT";
+import { evaluate as evaluateProtocol } from "../protocol/protocolEngine";
+import { mergeVitals, parseVitals } from "../voice/parseVitals";
 import {
   ensureMicPermission,
   startRecording,
@@ -94,11 +96,15 @@ export function RecordingScreen({ route, navigation }: ScreenProps<"Recording">)
       speakTts(t("recordingProcessing"), lang);
 
       const consent = buildConsentForPatient(patient);
+      // ASR follows the patient's recorded language (the patient is the one speaking).
+      // Extraction follows the worker's active UI language so the readback the
+      // ASHA worker hears on the next screen is in *her* language, not the
+      // patient's.
       const { transcriptText } = await transcribeAudio(uri, patient.languageCode, consent);
 
-      const extraction: ExtractResponse = await extractClinical({
+      const serverExtraction: ExtractResponse = await extractClinical({
         transcriptText,
-        languageCode: patient.languageCode,
+        languageCode: lang,
         consent,
         patientProfile: {
           isPregnant: patient.isPregnant,
@@ -108,6 +114,51 @@ export function RecordingScreen({ route, navigation }: ScreenProps<"Recording">)
           ageYears: patient.ageYears,
         },
       });
+
+      // Tier-1 deterministic regex pass — recovers any vital the LLM dropped
+      // on the first take ("BP 120 by 80" said quickly, "हीमोग्लोबिन 9").
+      // Backend value wins when present; regex only fills gaps.
+      const localVitals = parseVitals(transcriptText);
+      const mergedVitals = mergeVitals(serverExtraction.vitals, localVitals);
+
+      // Run the on-device protocol engine on the merged observations. The
+      // server's risk band is authoritative on the wire (so dashboards stay
+      // consistent), but if the on-device engine returns a STRONGER band we
+      // surface that on the worker UI immediately rather than under-triaging.
+      const onDevice = evaluateProtocol({
+        patient: {
+          isPregnant: patient.isPregnant,
+          gestationalWeeks: patient.gestationalWeeks,
+          isPostpartum: patient.isPostpartum,
+          daysPostpartum: patient.daysPostpartum,
+          ageYears: patient.ageYears,
+        },
+        vitals: mergedVitals as Record<string, number | boolean | string | null | undefined>,
+        symptoms: serverExtraction.symptoms ?? [],
+        velocityWarnings: serverExtraction.velocityWarnings ?? [],
+      });
+
+      const LEVEL_ORDER = ["LOW", "MODERATE", "HIGH", "CRITICAL"] as const;
+      const serverIdx = LEVEL_ORDER.indexOf(serverExtraction.riskLevel as typeof LEVEL_ORDER[number]);
+      const onDeviceIdx = LEVEL_ORDER.indexOf(onDevice.level);
+      const reconciled =
+        onDeviceIdx > serverIdx
+          ? {
+              riskLevel: onDevice.level,
+              riskScore: onDevice.score,
+              riskFlags: Array.from(new Set([...(serverExtraction.riskFlags ?? []), ...onDevice.flags])),
+            }
+          : {
+              riskLevel: serverExtraction.riskLevel,
+              riskScore: serverExtraction.riskScore,
+              riskFlags: serverExtraction.riskFlags,
+            };
+
+      const extraction: ExtractResponse = {
+        ...serverExtraction,
+        vitals: mergedVitals,
+        ...reconciled,
+      };
 
       stopTts();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -142,7 +193,7 @@ export function RecordingScreen({ route, navigation }: ScreenProps<"Recording">)
           <ChevronLeft color={colors.inkSoft} size={22} />
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={styles.who}>{patient?.name ?? "—"}</Text>
+          <Text style={styles.who}>{patient ? getDisplayName(patient, lang) : "—"}</Text>
           {!!patient?.village && (
             <Text style={styles.where}>{patient.village}</Text>
           )}

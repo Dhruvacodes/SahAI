@@ -12,6 +12,12 @@ export type RootStackParamList = {
     visitId: string;
     rawTranscriptText: string;
     extraction: ExtractResponse;
+    /**
+     * When true, the screen renders an existing visit in read-only mode:
+     * Save and Generate Referral buttons are hidden, autoplay is suppressed,
+     * and tapping back returns to the patient profile.
+     */
+    readOnly?: boolean;
   };
   Referral: {
     patientId: string;

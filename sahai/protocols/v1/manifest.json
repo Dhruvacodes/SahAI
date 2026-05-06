@@ -1,0 +1,102 @@
+{
+  "version": "1.0.0",
+  "title": "SahAI Protocol Pack v1",
+  "description": "Deterministic, citation-backed clinical decision rules for ASHA workers in rural India. Sourced from Government of India MoHFW operational guidelines, NHM ASHA modules, IMNCI chart booklets, and FOGSI/IAP standards. Every rule fires only when its inputs are explicitly observed; nothing is invented from prose.",
+  "lastReviewedAt": "2026-05-06",
+  "reviewers": [
+    {
+      "name": "SahAI Engineering",
+      "role": "Author",
+      "note": "Initial draft compiled from public MoHFW/NHM/IMNCI references. Pending external clinical review by an OBGYN and a paediatrician before production deployment."
+    }
+  ],
+  "verticals": [
+    "anc_danger_signs",
+    "imnci_sick_child",
+    "neonatal_hbnc",
+    "trauma_redflags",
+    "pph",
+    "fever_triage",
+    "tb_dots",
+    "malaria_severity",
+    "snake_animal_bite",
+    "mental_health_phq2",
+    "ncd_pen_screen",
+    "rbsk_4d",
+    "idsp_reportable"
+  ],
+  "sources": [
+    {
+      "id": "MoHFW-MH-OG-2017",
+      "title": "Maternal Health Operational Guidelines",
+      "publisher": "Ministry of Health and Family Welfare, Government of India",
+      "year": 2017
+    },
+    {
+      "id": "MoHFW-DAKSHATA-2017",
+      "title": "Dakshata: Empowering providers for improved MNH care during institutional deliveries",
+      "publisher": "MoHFW, Government of India",
+      "year": 2017
+    },
+    {
+      "id": "MoHFW-HBNC-2014",
+      "title": "Home Based Newborn Care: Operational Guidelines (revised)",
+      "publisher": "MoHFW, Government of India",
+      "year": 2014
+    },
+    {
+      "id": "MoHFW-IMNCI-2018",
+      "title": "Integrated Management of Neonatal and Childhood Illness (IMNCI) Chart Booklet",
+      "publisher": "MoHFW, Government of India",
+      "year": 2018
+    },
+    {
+      "id": "MoHFW-RBSK-2013",
+      "title": "Rashtriya Bal Swasthya Karyakram operational framework",
+      "publisher": "MoHFW, Government of India",
+      "year": 2013
+    },
+    {
+      "id": "MoHFW-RNTCP-2019",
+      "title": "Index-TB and TB Programme Technical and Operational Guidelines",
+      "publisher": "Central TB Division, MoHFW",
+      "year": 2019
+    },
+    {
+      "id": "MoHFW-MALARIA-2016",
+      "title": "National Drug Policy on Malaria",
+      "publisher": "National Vector Borne Disease Control Programme, MoHFW",
+      "year": 2016
+    },
+    {
+      "id": "MoHFW-PEN-2017",
+      "title": "Operational Guidelines for Prevention, Screening, and Control of Common NCDs (PEN package)",
+      "publisher": "MoHFW, Government of India",
+      "year": 2017
+    },
+    {
+      "id": "MoHFW-IDSP-2018",
+      "title": "Integrated Disease Surveillance Programme - Manual for ASHA/ANM",
+      "publisher": "National Centre for Disease Control, MoHFW",
+      "year": 2018
+    },
+    {
+      "id": "MoHFW-SNAKEBITE-2017",
+      "title": "National Snakebite Management Protocol",
+      "publisher": "MoHFW, Government of India",
+      "year": 2017
+    },
+    {
+      "id": "FOGSI-PE-2017",
+      "title": "FOGSI Good Clinical Practice Recommendations on Pre-eclampsia and Eclampsia",
+      "publisher": "Federation of Obstetric and Gynaecological Societies of India",
+      "year": 2017
+    },
+    {
+      "id": "WHO-PHQ2",
+      "title": "Patient Health Questionnaire-2 (mhGAP)",
+      "publisher": "World Health Organization",
+      "year": 2016
+    }
+  ]
+}

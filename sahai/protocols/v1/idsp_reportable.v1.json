@@ -1,0 +1,70 @@
+{
+  "vertical": "IDSP",
+  "version": "1.0.0",
+  "description": "Integrated Disease Surveillance Programme - syndromic alerts that the ASHA must escalate to the ANM/MO for IDSP reporting.",
+  "rules": [
+    {
+      "id": "IDSP.AFP",
+      "vertical": "IDSP",
+      "label": { "en": "Acute flaccid paralysis (< 15 yr)", "hi": "अचानक लकवा (15 वर्ष से कम)" },
+      "applies_to": { "ageYearsMax": 15 },
+      "trigger": {
+        "any_symptom_in": [
+          "sudden weakness limb",
+          "flaccid paralysis",
+          "cannot move legs",
+          "polio-like",
+          "lakwa",
+          "afp"
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "IDSP_REPORT_TODAY", "text": { "en": "Report to ANM/MO today; AFP is reportable within 24 hours under polio surveillance." } },
+        { "id": "REFER_PEDIATRIC", "text": { "en": "Refer to paediatric facility for stool samples and neurological assessment." } }
+      ],
+      "rationale": "AFP in under-15s requires immediate notification to maintain India's polio-free status.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "AFP Surveillance" }
+    },
+    {
+      "id": "IDSP.AES.JE",
+      "vertical": "IDSP",
+      "label": { "en": "Acute encephalitis syndrome (AES/JE)", "hi": "तीव्र मस्तिष्क ज्वर" },
+      "trigger": {
+        "all_of": [
+          { "vitals.temperature_gte": 38.5 },
+          { "any_symptom_in": ["altered mental status", "convulsion", "neck rigidity", "behoshi", "daura"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "REFER_TERTIARY", "text": { "en": "Refer urgently to a paediatric/medical college for LP and supportive care." } },
+        { "id": "IDSP_NOTIFY", "text": { "en": "Notify IDSP unit; AES/JE is mandatorily reportable." } }
+      ],
+      "rationale": "AES carries high case fatality; early supportive care and JE surveillance are part of the IDSP weekly form.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "AES/JE" }
+    },
+    {
+      "id": "IDSP.MEASLES.RUBELLA",
+      "vertical": "IDSP",
+      "label": { "en": "Measles / rubella outbreak suspect", "hi": "खसरा / रूबेला" },
+      "trigger": {
+        "all_of": [
+          { "any_symptom_in": ["rash", "lal daane", "measles rash"] },
+          { "vitals.temperature_gte": 38.0 },
+          { "any_symptom_in": ["cough", "coryza", "conjunctivitis"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "ISOLATE_VITAMIN_A", "text": { "en": "Isolate the case; give Vitamin A per IMNCI." } },
+        { "id": "IDSP_LINE_LIST", "text": { "en": "Line-list household and school contacts; report to MO for outbreak response." } }
+      ],
+      "rationale": "Measles/rubella is targeted for elimination; any suspected case triggers an outbreak investigation.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "Measles-Rubella Elimination" }
+    }
+  ]
+}

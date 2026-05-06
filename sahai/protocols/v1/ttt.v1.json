@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "description": "Default time-to-treatment (in minutes) per severity band when a fired rule does not specify its own ttt_minutes. The engine picks the minimum across all fired rules.",
+  "defaults": {
+    "CRITICAL": 30,
+    "HIGH": 240,
+    "MODERATE": 1440,
+    "LOW": 10080
+  },
+  "urgency_score": {
+    "description": "Composite urgency formula evaluated by the supervisor dashboard. Higher = more urgent.",
+    "formula": "level_weight + life_threat_bonus + age_modifier + pregnancy_modifier + 1000 / max(ttt_minutes_remaining, 1)",
+    "level_weight": {
+      "LOW": 0,
+      "MODERATE": 25,
+      "HIGH": 60,
+      "CRITICAL": 100
+    },
+    "life_threat_bonus": 25,
+    "age_modifiers": {
+      "infant_under_2_months": 15,
+      "child_under_5_years": 10,
+      "elderly_over_60_years": 5
+    },
+    "pregnancy_modifier": 10
+  }
+}

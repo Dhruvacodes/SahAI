@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RiskBanner } from "../components/RiskBanner";
 import { VisitTimelineItem } from "../components/VisitTimelineItem";
-import { usePatientStore } from "../data/patientStore";
+import { getDisplayName, usePatientStore } from "../data/patientStore";
 import { useVisitStore } from "../data/visitStore";
 import { useT } from "../i18n/useT";
 import { colors, radius, spacing, tapTargets, typography } from "../theme";
@@ -14,7 +14,7 @@ import type { RiskLevel } from "../types";
 
 export function PatientProfileScreen({ route, navigation }: ScreenProps<"PatientProfile">) {
   const { patientId } = route.params;
-  const { t } = useT();
+  const { t, lang } = useT();
   const patient = usePatientStore((s) => s.getById(patientId));
   const visits = useVisitStore((s) => s.visits);
   const patientVisits = useMemo(
@@ -48,7 +48,7 @@ export function PatientProfileScreen({ route, navigation }: ScreenProps<"Patient
           <ChevronLeft color={colors.inkSoft} size={22} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{patient.name}</Text>
+          <Text style={styles.title}>{getDisplayName(patient, lang)}</Text>
           <Text style={styles.subtitle}>
             {patient.ageYears != null ? `${patient.ageYears} ${t("profileAge")}` : ""}
             {patient.isPregnant && patient.gestationalWeeks != null
@@ -90,7 +90,19 @@ export function PatientProfileScreen({ route, navigation }: ScreenProps<"Patient
             <Text style={styles.empty}>{t("profileNoVisits")}</Text>
           ) : (
             patientVisits.map((visit) => (
-              <VisitTimelineItem key={visit.id} visit={visit} />
+              <VisitTimelineItem
+                key={visit.id}
+                visit={visit}
+                onPress={() =>
+                  navigation.navigate("VisitSummary", {
+                    patientId: visit.patientId,
+                    visitId: visit.id,
+                    rawTranscriptText: visit.rawTranscriptText,
+                    extraction: visit.extraction,
+                    readOnly: true,
+                  })
+                }
+              />
             ))
           )}
         </View>

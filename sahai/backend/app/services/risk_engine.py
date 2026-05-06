@@ -1,10 +1,23 @@
 # backend/app/services/risk_engine.py
 
 from __future__ import annotations
-"""Deterministic, multi-factor risk engine. Pure Python rules, no ML.
-Mirrors apps/mobile/riskEngine.ts EXACTLY — keep both files in sync.
+"""Deterministic, multi-factor risk engine.
+
+Historically this module held all the inline thresholds. As of v3 the
+authoritative rules live in the JSON catalog under ``sahai/protocols/v1/`` and
+are evaluated by ``protocol_engine.evaluate``. This file now:
+
+  1. Delegates to the protocol engine and surfaces its fired-rule output.
+  2. Keeps the legacy inline rules as a *defence-in-depth* fallback so that if
+     the catalog is missing or incomplete during transition, we still escalate
+     for hypertension, hypoxia, fever and a small set of IMCI keywords.
+
+Once every legacy rule has been migrated to a JSON file, the inline block can
+be removed.
 """
 from typing import Optional, List, Dict
+
+from app.services import protocol_engine
 
 LEVEL_ORDER = ["LOW", "MODERATE", "HIGH", "CRITICAL"]
 LEVEL_SCORE = {"LOW": 0.10, "MODERATE": 0.40, "HIGH": 0.70, "CRITICAL": 0.92}
@@ -108,11 +121,41 @@ def score_risk(
     # === Hemorrhage flags ===
     if _has_symptom(symptoms, ["heavy bleeding", "haemorrhage"]):
         escalate("CRITICAL", "Heavy bleeding reported")
-    
+
+    # === Protocol-engine overlay (v3+) ============================================
+    # Run the JSON-driven rule pack and merge its output. The strongest band
+    # across legacy rules and protocol rules wins; fired rules and first-
+    # response actions from the catalog are surfaced verbatim so downstream
+    # consumers (dashboard, referral renderer) can cite them.
+    try:
+        protocol_out = protocol_engine.score_risk_via_protocol(
+            vitals=vitals,
+            symptoms=symptoms,
+            patient_profile=patient_profile,
+            velocity_warnings=velocity_warnings,
+        )
+    except Exception:  # pragma: no cover — never let the catalog crash a visit
+        protocol_out = None
+
+    if protocol_out is not None:
+        protocol_level = protocol_out.get("level", "LOW")
+        if LEVEL_ORDER.index(protocol_level) > LEVEL_ORDER.index(max_level):
+            max_level = protocol_level
+        # Merge new flags (de-duplicated) so the dashboard sees rule ids.
+        for f in protocol_out.get("flags", []) or []:
+            if f not in flags:
+                flags.append(f)
+    else:
+        protocol_out = {}
+
     return {
         "level": max_level,
         "score": LEVEL_SCORE[max_level],
         "flags": flags,
+        "firedRules": protocol_out.get("fired_rules", []) if protocol_out else [],
+        "firstResponseActions": protocol_out.get("first_response_actions", []) if protocol_out else [],
+        "ttt_minutes": protocol_out.get("ttt_minutes") if protocol_out else None,
+        "catalogVersion": protocol_out.get("catalog_version") if protocol_out else None,
     }
 
 

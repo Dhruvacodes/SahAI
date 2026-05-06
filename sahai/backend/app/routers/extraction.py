@@ -58,6 +58,11 @@ class ExtractResponse(BaseModel):
     velocityWarnings: List[str]
     trendContext: str
     dataQuality: dict
+    # Protocol-engine provenance (added in v4 / protocol-grounded overhaul).
+    firedRules: List[dict] = []
+    firstResponseActions: List[dict] = []
+    catalogVersion: Optional[str] = None
+    ttt_minutes: Optional[int] = None
 
 
 @router.post("/extract", response_model=ExtractResponse)
@@ -65,36 +70,45 @@ async def extract(req: ExtractRequest, db: Session = Depends(get_db)):
     # 1. Verify consent
     if req.consent.receiptHash:
         verify_consent_receipt(db, req.consent.receiptHash)  # raises 403 if withdrawn
-    
+
     # 2. Vocab correction (after STT, before Haiku)
     corrected_transcript = correct_transcript(req.transcriptText, req.languageCode)
-    
-    # 3. Longitudinal trends
-    trends = get_patient_trends(
-        db, req.consent.patientId,
-        current_vitals={},
-    )
-    
-    # 4. Build context
+
+    # 3. Patient profile
     profile_dict = {}
     if req.patientProfile:
         if hasattr(req.patientProfile, "model_dump"):
             profile_dict = req.patientProfile.model_dump()
         else:
             profile_dict = req.patientProfile.dict()
-    
+
+    # 4. Trend *context* for the LLM prompt — based on past visits only,
+    #    since we haven't extracted the current vitals yet. The prompt only
+    #    needs human-readable history, not numeric deltas.
+    trend_context = get_patient_trends(
+        db, req.consent.patientId,
+        current_vitals={},
+    )
+
     context = {
         "languageCode": req.languageCode,
         "visitTypeHint": req.visitTypeHint or "auto-detect",
         "patientProfile": profile_dict,
-        "trendContext": trends["trend_context"],
-        "velocityWarnings": trends["velocity_warnings"],
+        "trendContext": trend_context["trend_context"],
+        "velocityWarnings": trend_context["velocity_warnings"],
     }
-    
-    # 5. Haiku extraction
+
+    # 5. Haiku extraction (LLM produces observations only — no severity).
     extraction = await extract_clinical_data(corrected_transcript, context)
-    
-    # 6. Risk scoring
+
+    # 6. NOW compute longitudinal trends *with* the freshly extracted vitals
+    #    so velocity warnings (rapid BP rise, etc.) reflect real deltas.
+    trends = get_patient_trends(
+        db, req.consent.patientId,
+        current_vitals=extraction.get("vitals", {}) or {},
+    )
+
+    # 7. Risk scoring via the protocol engine + legacy fallback.
     risk = score_risk(
         vitals=extraction["vitals"],
         symptoms=extraction["symptoms"],
@@ -102,7 +116,7 @@ async def extract(req: ExtractRequest, db: Session = Depends(get_db)):
         velocity_warnings=trends["velocity_warnings"],
     )
     
-    # 7. Cost log
+    # 8. Cost log
     meta = extraction.get("_meta", {})
     log_cost(db,
         endpoint="/api/extract",
@@ -113,7 +127,7 @@ async def extract(req: ExtractRequest, db: Session = Depends(get_db)):
         cached_input_tokens=meta.get("cached_input_tokens", 0),
     )
     
-    # 8. Audit log (METADATA ONLY, never raw transcript)
+    # 9. Audit log (METADATA ONLY, never raw transcript)
     log_event(db,
         actor_id=req.consent.ashaId, actor_role="ASHA",
         event_type="EXTRACT",
@@ -139,6 +153,10 @@ async def extract(req: ExtractRequest, db: Session = Depends(get_db)):
         velocityWarnings=trends["velocity_warnings"],
         trendContext=trends["trend_context"],
         dataQuality=extraction["dataQuality"],
+        firedRules=risk.get("firedRules", []) or [],
+        firstResponseActions=risk.get("firstResponseActions", []) or [],
+        catalogVersion=risk.get("catalogVersion"),
+        ttt_minutes=risk.get("ttt_minutes"),
     )
 
 
@@ -151,6 +169,7 @@ class DemographicsRequest(BaseModel):
 
 class DemographicsResponse(BaseModel):
     name: Optional[str] = None
+    nameLatin: Optional[str] = None
     ageYears: Optional[int] = None
     village: Optional[str] = None
     phone: Optional[str] = None

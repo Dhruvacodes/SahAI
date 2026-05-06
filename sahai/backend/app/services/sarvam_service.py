@@ -4,10 +4,39 @@ from __future__ import annotations
 """Sarvam AI integration: Saaras v3 STT + Bulbul v2 TTS.
 Reference: https://docs.sarvam.ai
 """
-import os
 import asyncio
+import logging
+import os
 from typing import Optional
+
 from sarvamai import SarvamAI
+
+try:
+    # Sarvam SDK ApiError carries (status_code, headers, body). We re-export
+    # the body in our own exception so callers can show a meaningful message
+    # instead of "headers: {...}" truncated to 200 chars.
+    from sarvamai.core.api_error import ApiError as SarvamApiError
+except Exception:  # pragma: no cover — older SDK or import quirk
+    SarvamApiError = Exception  # type: ignore[misc, assignment]
+
+log = logging.getLogger(__name__)
+
+
+class SarvamTranscriptionError(Exception):
+    """Sarvam transcription failure with a useful one-line summary."""
+
+    def __init__(
+        self,
+        *,
+        message: str,
+        status_code: Optional[int] = None,
+        body: Optional[object] = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.body = body
+
 
 _client: Optional[SarvamAI] = None
 
@@ -64,7 +93,19 @@ async def transcribe_with_sarvam(
                 model="saarika:v2.5",
             )
 
-    response = await asyncio.to_thread(_sync_call)
+    try:
+        response = await asyncio.to_thread(_sync_call)
+    except SarvamApiError as exc:
+        # Surface the Sarvam-side reason (e.g. "audio too long") instead of
+        # losing it inside a stringified `headers: {...}` dump.
+        body_repr = _short_body_repr(getattr(exc, "body", None))
+        status = getattr(exc, "status_code", None)
+        raise SarvamTranscriptionError(
+            message=f"Sarvam {status or '?'}: {body_repr}",
+            status_code=status,
+            body=getattr(exc, "body", None),
+        ) from exc
+
     return {
         "transcript": response.transcript,
         "language_code": language_code,
@@ -72,6 +113,23 @@ async def transcribe_with_sarvam(
         "model": "saarika:v2.5",
         "audio_seconds": getattr(response, "duration_seconds", 0.0),
     }
+
+
+def _short_body_repr(body: object) -> str:
+    """One-line summary of the Sarvam error body."""
+    if body is None:
+        return "no body"
+    if isinstance(body, dict):
+        for key in ("error", "message", "detail", "details"):
+            value = body.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            if isinstance(value, dict):
+                msg = value.get("message") or value.get("detail")
+                if isinstance(msg, str) and msg.strip():
+                    return msg.strip()
+        return str(body)[:240]
+    return str(body)[:240]
 
 
 async def synthesize_with_bulbul(

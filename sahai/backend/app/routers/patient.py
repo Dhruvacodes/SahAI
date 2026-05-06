@@ -27,6 +27,7 @@ class PatientUpsert(BaseModel):
     id: str = Field(..., description="Client-generated UUID")
     ashaId: str
     name: str
+    nameLatin: Optional[str] = None
     ageYears: Optional[int] = None
     sex: Optional[str] = None
     isPregnant: bool = False
@@ -45,6 +46,7 @@ class PatientResponse(BaseModel):
     id: str
     ashaId: str
     name: str
+    nameLatin: Optional[str] = None
     ageYears: Optional[int] = None
     sex: Optional[str] = None
     isPregnant: bool
@@ -64,6 +66,7 @@ def _to_response(orm: PatientORM) -> PatientResponse:
         id=orm.id,
         ashaId=orm.ashaId,
         name=orm.name,
+        nameLatin=orm.nameLatin,
         ageYears=orm.ageYears,
         sex=orm.sex,
         isPregnant=orm.isPregnant,
@@ -94,6 +97,7 @@ def upsert_patient(
             id=payload.id,
             ashaId=payload.ashaId,
             name=payload.name,
+            nameLatin=payload.nameLatin,
             ageYears=payload.ageYears,
             sex=payload.sex,
             isPregnant=payload.isPregnant,

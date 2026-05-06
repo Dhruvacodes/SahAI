@@ -1,0 +1,62 @@
+{
+  "vertical": "FEVER",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "FEVER.HYPERPYREXIA",
+      "vertical": "FEVER",
+      "label": { "en": "Hyperpyrexia (>= 40 °C / 104 °F)", "hi": "बहुत तेज़ बुखार" },
+      "trigger": { "vitals.temperature_gte": 40.0 },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "PARACETAMOL_NOW", "text": { "en": "Give paracetamol weight-based dose now (10–15 mg/kg)." } },
+        { "id": "TEPID_SPONGING", "text": { "en": "Tepid sponging with lukewarm water; do NOT use cold water or alcohol." } },
+        { "id": "REFER_NOW", "text": { "en": "Refer to PHC/CHC now; rule out cerebral malaria, severe sepsis, dengue shock." } }
+      ],
+      "rationale": "Core temperature >= 40 °C risks febrile seizures, dehydration, and signals severe infection or heatstroke; same-day facility evaluation required.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Fever - Severe disease" }
+    },
+    {
+      "id": "FEVER.PERSISTENT.PROLONGED",
+      "vertical": "FEVER",
+      "label": { "en": "Persistent fever > 7 days", "hi": "लगातार 7 दिन से ज़्यादा बुखार" },
+      "trigger": {
+        "any_symptom_in": [
+          "fever for 7 days",
+          "fever for 8 days",
+          "fever for 10 days",
+          "two weeks fever",
+          "satah dino se bukhar",
+          "saat din se bukhar"
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "MALARIA_TYPHOID_TB_WORKUP", "text": { "en": "Refer to PHC/CHC for malaria smear/RDT, dengue/typhoid serology, and TB screening." } }
+      ],
+      "rationale": "Fever >= 7 days warrants laboratory workup for malaria, typhoid, dengue, and TB per IDSP and RNTCP guidelines.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "Fever Surveillance" }
+    },
+    {
+      "id": "FEVER.WITH.RASH",
+      "vertical": "FEVER",
+      "label": { "en": "Fever with rash (measles / dengue)", "hi": "बुखार के साथ दाने" },
+      "trigger": {
+        "all_of": [
+          { "vitals.temperature_gte": 38.0 },
+          { "any_symptom_in": ["rash", "petechiae", "purpura", "haemorrhagic spots", "khoon ke daane", "lal daane"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "ISOLATE_NOTIFY", "text": { "en": "Isolate patient if measles is suspected; notify ANM/MO for IDSP reporting." } },
+        { "id": "REFER_FOR_CBC_NS1", "text": { "en": "Refer to PHC/CHC for CBC + NS1 antigen and platelet trend." } }
+      ],
+      "rationale": "Fever with rash + petechiae raises concern for severe dengue / measles; both are IDSP-notifiable and require platelet monitoring.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "Notifiable Diseases" }
+    }
+  ]
+}

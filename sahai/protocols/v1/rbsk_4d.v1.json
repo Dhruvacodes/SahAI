@@ -1,0 +1,59 @@
+{
+  "vertical": "RBSK",
+  "version": "1.0.0",
+  "description": "Rashtriya Bal Swasthya Karyakram - 4D screening (Defects at birth, Diseases, Deficiencies, Developmental delays).",
+  "rules": [
+    {
+      "id": "RBSK.DEFECT.BIRTH",
+      "vertical": "RBSK",
+      "label": { "en": "Defect at birth observed", "hi": "जन्मजात विकार" },
+      "applies_to": { "ageMonthsMax": 1 },
+      "trigger": {
+        "any_symptom_in": [
+          "cleft lip",
+          "cleft palate",
+          "club foot",
+          "talipes",
+          "myelomeningocele",
+          "spina bifida",
+          "anorectal malformation",
+          "imperforate anus",
+          "down syndrome features",
+          "hole in heart",
+          "neural tube defect"
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "REFER_DEIC", "text": { "en": "Refer to nearest District Early Intervention Centre (DEIC) for definitive evaluation under RBSK." } },
+        { "id": "RECORD_RBSK_FORM", "text": { "en": "Fill RBSK 4D form; counsel parents on free management package." } }
+      ],
+      "rationale": "RBSK ensures free surgical / specialist care for selected birth defects; early referral is the difference between repair and disability.",
+      "source": { "doc": "MoHFW-RBSK-2013" }
+    },
+    {
+      "id": "RBSK.DEVELOPMENTAL.DELAY",
+      "vertical": "RBSK",
+      "label": { "en": "Developmental delay screen", "hi": "विकास में देरी" },
+      "applies_to": { "ageMonthsMin": 6, "ageMonthsMax": 71 },
+      "trigger": {
+        "any_symptom_in": [
+          "not sitting at 9 months",
+          "not walking at 18 months",
+          "no speech at 2 years",
+          "no eye contact",
+          "not responding to sounds",
+          "milestone delay"
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "DEIC_REFERRAL", "text": { "en": "Refer to DEIC for developmental assessment." } }
+      ],
+      "rationale": "RBSK uses age-appropriate milestone red flags; DEIC offers physiotherapy, speech and audiology services free of cost.",
+      "source": { "doc": "MoHFW-RBSK-2013" }
+    }
+  ]
+}

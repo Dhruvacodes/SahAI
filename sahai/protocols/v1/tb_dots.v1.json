@@ -1,0 +1,60 @@
+{
+  "vertical": "TB",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "TB.PRESUMPTIVE",
+      "vertical": "TB",
+      "label": { "en": "Presumptive TB - cough >= 2 weeks", "hi": "टीबी की संभावना" },
+      "trigger": {
+        "any_of": [
+          { "any_symptom_in": [
+            "cough for 2 weeks",
+            "cough for two weeks",
+            "cough for 3 weeks",
+            "cough for one month",
+            "do haftay se khansi",
+            "haftay bhar se khansi",
+            "haemoptysis",
+            "blood in sputum",
+            "khansi mein khoon",
+            "weight loss",
+            "evening fever",
+            "night sweats"
+          ] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "REFER_DMC_NAAT", "text": { "en": "Refer to nearest Designated Microscopy Centre / NAAT (CB-NAAT) facility for two sputum samples (spot + early morning)." } },
+        { "id": "INFECTION_CONTROL_HOME", "text": { "en": "Counsel cough hygiene; ventilate room; mask while coughing." } },
+        { "id": "CONTACT_SCREENING", "text": { "en": "List household contacts < 6 yr for IPT/TPT screening per RNTCP." } }
+      ],
+      "rationale": "RNTCP defines presumptive TB as cough >= 2 weeks (or any duration with haemoptysis/loss of weight/night sweats); two sputum samples + NAAT is the diagnostic standard.",
+      "source": { "doc": "MoHFW-RNTCP-2019", "section": "Presumptive TB Identification" }
+    },
+    {
+      "id": "TB.DOTS.MISSED_DOSE",
+      "vertical": "TB",
+      "label": { "en": "DOTS dose missed", "hi": "डॉट्स की खुराक छूट गई" },
+      "trigger": {
+        "any_symptom_in": [
+          "missed tb dose",
+          "skipped dots",
+          "no medicine today",
+          "tb dawai chod di",
+          "dots miss"
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "RESTART_DOSE_SAME_DAY", "text": { "en": "Give the missed dose the same day if not yet bedtime; otherwise resume next scheduled dose." } },
+        { "id": "NOTIFY_TBHV", "text": { "en": "Inform TB Health Visitor / Senior Treatment Supervisor; record in Nikshay." } }
+      ],
+      "rationale": "Adherence is essential to prevent MDR-TB; RNTCP mandates same-day dose recovery and Nikshay tracking.",
+      "source": { "doc": "MoHFW-RNTCP-2019", "section": "DOTS Adherence" }
+    }
+  ]
+}

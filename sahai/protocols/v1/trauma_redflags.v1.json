@@ -1,0 +1,180 @@
+{
+  "vertical": "TRAUMA",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "TRAUMA.PENETRATING.GUNSHOT",
+      "vertical": "TRAUMA",
+      "label": {
+        "en": "Penetrating injury / gunshot wound",
+        "hi": "गोली लगने / पैनेट्रेटिंग चोट"
+      },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["gunshot", "bullet", "stab", "penetrating", "knife", "goli", "chura"] },
+          { "any_symptom_in": ["gunshot wound", "stab wound", "penetrating injury", "goli lagi", "chura lagi"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "CALL_108", "text": { "en": "Call 108 immediately and request a trauma-equipped ambulance.", "hi": "108 पर तुरंत कॉल करें और ट्रॉमा एम्बुलेंस मांगें।" } },
+        { "id": "DIRECT_PRESSURE", "text": { "en": "Apply firm direct pressure to any bleeding wound with a clean cloth.", "hi": "खून बहने वाले घाव पर साफ कपड़े से सीधा दबाव डालें।" } },
+        { "id": "DO_NOT_REMOVE_OBJECT", "text": { "en": "Do NOT remove embedded objects; stabilise them in place.", "hi": "घाव में फँसी वस्तु को न निकालें; उसे यथास्थान रखें।" } },
+        { "id": "KEEP_WARM", "text": { "en": "Keep the patient lying flat and warm.", "hi": "मरीज को सीधा लिटाएं और गर्म रखें।" } },
+        { "id": "NPO", "text": { "en": "Nothing by mouth — no food or water.", "hi": "कुछ भी खाने-पीने को न दें।" } },
+        { "id": "MONITOR_VITALS", "text": { "en": "Monitor breathing and pulse every 2 minutes until handoff.", "hi": "हर 2 मिनट में साँस और नाड़ी जाँचते रहें।" } }
+      ],
+      "referral_text_templates": {
+        "asha_to_phc": {
+          "en": "TRAUMA ALERT — penetrating injury. Mechanism: {{mechanisms}}. Vitals: BP {{sbp}}/{{dbp}}, HR {{hr}}, SpO2 {{spo2}}. Direct pressure applied. 108 dispatched. Request blood and surgical readiness."
+        },
+        "patient_instruction": {
+          "hi": "अभी अस्पताल जाना ज़रूरी है। 108 बुला ली है। शांत रहिए, हम साथ हैं।",
+          "en": "We need to go to the hospital right now. 108 has been called. Stay calm — I'm with you."
+        }
+      },
+      "rationale": "Penetrating injuries — gunshot or stab wounds — carry an immediate risk of haemorrhagic shock and require trauma-centre care within the golden hour, well before any vital sign derangement is observed.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - Pre-hospital Trauma Care" }
+    },
+    {
+      "id": "TRAUMA.MAJOR.BLEEDING",
+      "vertical": "TRAUMA",
+      "label": { "en": "Uncontrolled major external bleeding", "hi": "अनियंत्रित अधिक रक्तस्राव" },
+      "trigger": {
+        "any_of": [
+          { "any_symptom_in": ["heavy bleeding", "haemorrhage", "uncontrolled bleeding", "bahut khoon", "khoon nikal raha", "blood spurting", "soaking", "rakta srava"] },
+          { "vitals.bloodLossMl_gte": 500 }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "DIRECT_PRESSURE_FIRM", "text": { "en": "Apply firm direct pressure with a clean cloth for at least 10 minutes without lifting." } },
+        { "id": "ELEVATE_LIMB", "text": { "en": "If a limb is bleeding, elevate it above the level of the heart while maintaining pressure." } },
+        { "id": "TOURNIQUET_LAST_RESORT", "text": { "en": "Apply a tourniquet 5 cm above the wound only if bleeding cannot be controlled with pressure; note the exact time." } },
+        { "id": "CALL_108", "text": { "en": "Call 108 immediately." } },
+        { "id": "PREVENT_SHOCK", "text": { "en": "Lay patient flat, keep warm with a blanket, do not give food or water." } }
+      ],
+      "rationale": "Class III/IV haemorrhage (>=750–1500 mL) reliably produces shock; ASHA-level intervention is direct pressure and rapid transport. NHM Pre-hospital trauma module mandates 108 dispatch for any uncontrolled external bleeding.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - Pre-hospital Trauma Care" }
+    },
+    {
+      "id": "TRAUMA.HEAD.GCS_LOW",
+      "vertical": "TRAUMA",
+      "label": { "en": "Severe head injury (GCS <= 12 or unresponsive)", "hi": "गंभीर सिर की चोट" },
+      "trigger": {
+        "any_of": [
+          { "vitals.gcs_lte": 12 },
+          { "any_symptom_in": ["unconscious", "unresponsive", "not waking", "fitting", "convulsion after head injury", "head injury", "scalp bleeding", "sir mein chot"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "AIRWAY_SIDE", "text": { "en": "Place patient in the recovery (lateral) position to protect airway; maintain manual jaw-thrust if breathing is noisy." } },
+        { "id": "IMMOBILISE_NECK", "text": { "en": "Keep neck immobilised; do not flex or rotate." } },
+        { "id": "CALL_108", "text": { "en": "Call 108 — request neurology-capable facility." } },
+        { "id": "MONITOR_BREATHING", "text": { "en": "Watch for vomiting; keep airway clear; recheck consciousness every 2 minutes." } }
+      ],
+      "rationale": "GCS <= 12 or any altered consciousness after head trauma indicates moderate-to-severe TBI and requires immediate neuroimaging-capable transfer.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - Head Injury First Aid" }
+    },
+    {
+      "id": "TRAUMA.AIRWAY.COMPROMISE",
+      "vertical": "TRAUMA",
+      "label": { "en": "Airway compromise / not breathing normally", "hi": "साँस लेने में गंभीर रुकावट" },
+      "trigger": {
+        "any_of": [
+          { "vitals.airwayClear": false },
+          { "any_symptom_in": ["choking", "stridor", "gurgling", "agonal", "not breathing", "saans nahi le raha", "gasping"] },
+          { "vitals.spO2_lt": 90 }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "OPEN_AIRWAY", "text": { "en": "Open airway: head-tilt, chin-lift (jaw-thrust if neck injury suspected)." } },
+        { "id": "CLEAR_SECRETIONS", "text": { "en": "Clear visible secretions/foreign body if reachable; do NOT do blind sweeps." } },
+        { "id": "RECOVERY_POSITION", "text": { "en": "Place in recovery position once airway is open." } },
+        { "id": "CALL_108", "text": { "en": "Call 108 immediately." } }
+      ],
+      "rationale": "Compromised airway and SpO2 < 90% are pre-arrest signs; any other priority (history, paperwork) must wait.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - ABC Resuscitation" }
+    },
+    {
+      "id": "TRAUMA.BURN.MAJOR",
+      "vertical": "TRAUMA",
+      "label": { "en": "Major burn (>=15% body surface, face/airway, deep)", "hi": "गंभीर जलना" },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["burn", "scald", "fire", "jal gaya", "agni", "boiling water"] },
+          { "any_symptom_in": ["burn", "scald", "burnt skin", "facial burn", "airway burn", "jal gaya hai"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "COOL_WATER_20MIN", "text": { "en": "Cool the burn with running cool (not cold) water for at least 20 minutes." } },
+        { "id": "REMOVE_JEWELLERY", "text": { "en": "Remove rings, bangles, watches before swelling; do NOT peel stuck cloth." } },
+        { "id": "COVER_CLEAN", "text": { "en": "Cover the burn loosely with a clean dry cloth; do NOT apply oil/toothpaste/ash." } },
+        { "id": "FLUIDS_SIPS", "text": { "en": "Encourage small sips of ORS if conscious and not vomiting." } },
+        { "id": "CALL_108_IF_FACE_OR_LARGE", "text": { "en": "Call 108 for any burn involving face, hands, genitals, or larger than the patient's palm." } }
+      ],
+      "rationale": "Domestic kitchen and stove burns are common in rural India; first 20 minutes of cool-water irrigation drastically reduces depth. NHM HBNC module Section 7.4 mandates non-occlusive clean dressing and prohibits traditional remedies.",
+      "source": { "doc": "MoHFW-HBNC-2014", "section": "7.4 First aid for burns" }
+    },
+    {
+      "id": "TRAUMA.FRACTURE.SUSPECTED",
+      "vertical": "TRAUMA",
+      "label": { "en": "Suspected fracture or limb deformity", "hi": "हड्डी टूटने का संदेह" },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["fracture", "fall", "rta", "road accident", "haddi tooti", "gir gaya"] },
+          { "any_symptom_in": ["deformity", "fracture", "broken bone", "haddi tooti", "limb swelling after injury", "cannot move limb"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 120,
+      "first_response_actions": [
+        { "id": "IMMOBILISE", "text": { "en": "Immobilise the limb in the position found using a splint, cardboard, or rolled cloth." } },
+        { "id": "ELEVATE_AND_ICE", "text": { "en": "Elevate the limb if possible; apply a cool compress (no direct ice on skin)." } },
+        { "id": "CHECK_DISTAL_PULSE", "text": { "en": "Check pulse and sensation distal to the injury; if absent, escalate immediately." } },
+        { "id": "ARRANGE_TRANSPORT", "text": { "en": "Arrange transport to PHC/CHC for X-ray and orthopaedic review." } }
+      ],
+      "rationale": "Closed fractures rarely cause immediate mortality but require X-ray, reduction, and immobilisation; open fractures or absent distal pulses must be escalated to CRITICAL via airway/bleeding rules.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - Limb Injury First Aid" }
+    },
+    {
+      "id": "TRAUMA.SHOCK.HEMODYNAMIC",
+      "vertical": "TRAUMA",
+      "label": { "en": "Shock (hypotension or tachycardia after trauma)", "hi": "ट्रॉमा के बाद शॉक" },
+      "trigger": {
+        "all_of": [
+          {
+            "any_of": [
+              { "mechanism_in": ["fall", "rta", "road accident", "fracture", "burn", "gunshot", "stab"] },
+              { "any_symptom_in": ["accident", "fall", "trauma", "injury"] }
+            ]
+          },
+          {
+            "any_of": [
+              { "vitals.systolicBP_lt": 90 },
+              { "vitals.heartRate_gte": 120 }
+            ]
+          }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "LAY_FLAT_LEGS_UP", "text": { "en": "Lay the patient flat and elevate the legs 30 cm if no spinal/leg injury." } },
+        { "id": "KEEP_WARM", "text": { "en": "Cover with a blanket; do not let the patient become cold." } },
+        { "id": "CALL_108", "text": { "en": "Call 108 immediately." } },
+        { "id": "NPO", "text": { "en": "Nothing by mouth." } }
+      ],
+      "rationale": "Shock-index (HR/SBP) > 1 or SBP < 90 mmHg after trauma indicates compensated/early-decompensated shock; immediate transfer is mandatory regardless of mechanism.",
+      "source": { "doc": "MoHFW-MH-OG-2017", "section": "Annex - Trauma Triage" }
+    }
+  ]
+}

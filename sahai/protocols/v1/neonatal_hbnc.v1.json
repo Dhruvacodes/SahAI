@@ -1,0 +1,71 @@
+{
+  "vertical": "HBNC",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "HBNC.NEONATE.DANGER_SIGN",
+      "vertical": "HBNC",
+      "label": { "en": "Newborn (< 2 mo) danger sign", "hi": "नवजात का खतरनाक संकेत" },
+      "applies_to": { "ageMonthsMin": 0, "ageMonthsMax": 1 },
+      "trigger": {
+        "any_symptom_in": [
+          "not feeding well",
+          "stops feeding",
+          "convulsion",
+          "fast breathing",
+          "severe chest indrawing",
+          "fever 37.5",
+          "low body temperature",
+          "movement only when stimulated",
+          "no movement",
+          "yellow palms",
+          "yellow soles",
+          "dudh nahi pee raha",
+          "shareer thanda",
+          "shareer garam"
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "KMC", "text": { "en": "Initiate kangaroo mother care; keep skin-to-skin under mother's clothing with cap and socks." } },
+        { "id": "CONTINUE_BREASTFEED_IF_ABLE", "text": { "en": "Encourage exclusive breastfeeding; if newborn cannot suckle, give expressed breast milk by spoon." } },
+        { "id": "REFER_SNCU_NBSU", "text": { "en": "Refer to nearest SNCU / NBSU urgently; communicate findings on the HBNC card." } }
+      ],
+      "rationale": "MoHFW HBNC operational guidelines list seven neonatal danger signs; presence of any one mandates urgent referral with KMC en route.",
+      "source": { "doc": "MoHFW-HBNC-2014", "section": "Module 5 Neonatal Danger Signs" }
+    },
+    {
+      "id": "HBNC.NEONATE.HYPOTHERMIA",
+      "vertical": "HBNC",
+      "label": { "en": "Neonatal hypothermia (< 36.5 °C)", "hi": "नवजात का शरीर ठंडा" },
+      "applies_to": { "ageMonthsMin": 0, "ageMonthsMax": 1 },
+      "trigger": { "vitals.temperature_lt": 36.5 },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "KMC_NOW", "text": { "en": "Begin kangaroo mother care immediately; cover mother and baby together." } },
+        { "id": "WARM_ROOM", "text": { "en": "Move to a warm room; close windows; remove wet clothes." } },
+        { "id": "RECHECK_TEMP_30MIN", "text": { "en": "Recheck axillary temperature in 30 minutes; refer if not improving or below 35 °C." } }
+      ],
+      "rationale": "Axillary temperature < 36.5 °C is hypothermia per HBNC; KMC restores warmth and reduces neonatal mortality.",
+      "source": { "doc": "MoHFW-HBNC-2014", "section": "Module 4 Thermal Care" }
+    },
+    {
+      "id": "HBNC.LBW",
+      "vertical": "HBNC",
+      "label": { "en": "Low-birth-weight newborn (< 2.5 kg)", "hi": "कम वज़न का नवजात" },
+      "applies_to": { "ageMonthsMin": 0, "ageMonthsMax": 1 },
+      "trigger": { "vitals.weight_lt": 2.5 },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "KMC_DAILY", "text": { "en": "Counsel and supervise daily KMC; weigh weekly." } },
+        { "id": "EBM_IF_NOT_SUCKLING", "text": { "en": "Expressed breast milk by spoon if unable to suckle; do not bottle-feed." } },
+        { "id": "FOLLOW_UP_HBNC_VISITS", "text": { "en": "Conduct all HBNC visits on schedule (Days 1, 3, 7, 14, 21, 28, 42); refer if any danger sign emerges." } }
+      ],
+      "rationale": "Weight < 2.5 kg is LBW per HBNC and requires intensified home-based care, frequent monitoring, and KMC.",
+      "source": { "doc": "MoHFW-HBNC-2014", "section": "Module 7 LBW Care" }
+    }
+  ]
+}

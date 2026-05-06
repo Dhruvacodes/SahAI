@@ -1,0 +1,67 @@
+{
+  "vertical": "BITE",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "BITE.SNAKE",
+      "vertical": "BITE",
+      "label": { "en": "Snake bite", "hi": "साँप का काटना" },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["snake bite", "snake", "saap kaata", "naag", "cobra", "viper"] },
+          { "any_symptom_in": ["snake bite", "fang marks", "saap ne kaata", "puncture wound leg"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "REASSURE_IMMOBILISE", "text": { "en": "Reassure the patient; immobilise the bitten limb at heart level; remove rings/bangles." } },
+        { "id": "PRESSURE_IMMOBILISATION_NOT_TOURNIQUET", "text": { "en": "Apply pressure-immobilisation bandage; do NOT apply a tourniquet, do NOT cut, suck, or wash the wound." } },
+        { "id": "TRANSPORT_FAST_QUIET", "text": { "en": "Transport quickly and quietly; minimise muscular movement." } },
+        { "id": "ASV_AT_PHC", "text": { "en": "Communicate to PHC/CHC: prepare polyvalent ASV per National Snakebite Protocol." } }
+      ],
+      "rationale": "ASV must be given as early as possible; pressure-immobilisation slows venom spread, traditional remedies (cutting, sucking, plant pastes) are contraindicated.",
+      "source": { "doc": "MoHFW-SNAKEBITE-2017" }
+    },
+    {
+      "id": "BITE.DOG.RABIES",
+      "vertical": "BITE",
+      "label": { "en": "Dog / animal bite (rabies risk)", "hi": "कुत्ते / जानवर का काटना" },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["dog bite", "monkey bite", "cat bite", "kutta kaata", "bandar kaata"] },
+          { "any_symptom_in": ["dog bite", "animal bite", "kutta ne kaata", "scratch by dog"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "WASH_WOUND_15MIN", "text": { "en": "Wash the wound thoroughly with soap and running water for at least 15 minutes." } },
+        { "id": "ANTISEPTIC", "text": { "en": "Apply povidone-iodine or 70 % alcohol after washing." } },
+        { "id": "REFER_ARV_CATEGORY", "text": { "en": "Refer to ARV centre today; categorise per WHO/MoHFW (I/II/III) for ARV ± RIG." } },
+        { "id": "TETANUS_PROPHYLAXIS", "text": { "en": "Update tetanus immunisation if last dose > 5 years." } }
+      ],
+      "rationale": "Category II/III animal bites require post-exposure prophylaxis with anti-rabies vaccine; rabies is invariably fatal once symptomatic.",
+      "source": { "doc": "MoHFW-IDSP-2018", "section": "National Rabies Control Programme" }
+    },
+    {
+      "id": "BITE.SCORPION",
+      "vertical": "BITE",
+      "label": { "en": "Scorpion sting", "hi": "बिच्छू का डंक" },
+      "trigger": {
+        "any_of": [
+          { "mechanism_in": ["scorpion", "bichu kaata"] },
+          { "any_symptom_in": ["scorpion sting", "bichu ne kaata"] }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "REASSURE_IMMOBILISE", "text": { "en": "Reassure; immobilise the limb; apply cold compress." } },
+        { "id": "REFER_PHC_PRAZOSIN", "text": { "en": "Refer to PHC/CHC for prazosin and observation." } }
+      ],
+      "rationale": "Indian red scorpion stings can cause severe autonomic storms; oral prazosin under observation reduces mortality.",
+      "source": { "doc": "MoHFW-IDSP-2018" }
+    }
+  ]
+}

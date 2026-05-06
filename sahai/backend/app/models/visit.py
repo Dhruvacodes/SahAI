@@ -46,3 +46,12 @@ class VisitORM(Base):
     outcome_recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Protocol-engine provenance (added in V4 / protocol-grounded overhaul).
+    # `firedRules` is a list of {id, label, rationale, source, ttt_minutes} dicts
+    # from the deterministic engine; persisted so dashboards and audits can
+    # show *which* rule escalated this visit and cite the underlying guideline.
+    firedRules: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
+    firstResponseActions: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
+    protocolVersion: Mapped[str] = mapped_column(String, nullable=True)
+    tttMinutes: Mapped[int] = mapped_column(Integer, nullable=True)

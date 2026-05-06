@@ -22,6 +22,7 @@ class PatientORM(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     ashaId: Mapped[str] = mapped_column(String, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    nameLatin: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     ageYears: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     sex: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     isPregnant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

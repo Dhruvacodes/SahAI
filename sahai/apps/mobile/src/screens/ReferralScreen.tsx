@@ -11,22 +11,23 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { ReadbackButton } from "../components/ReadbackButton";
-import { usePatientStore } from "../data/patientStore";
+import { getDisplayName, usePatientStore } from "../data/patientStore";
 import { useT } from "../i18n/useT";
 import { colors, radius, spacing, tapTargets, typography } from "../theme";
 import type { ScreenProps } from "../nav/routes";
 
 export function ReferralScreen({ route, navigation }: ScreenProps<"Referral">) {
   const { referral, patientId } = route.params;
-  const { t } = useT();
+  const { t, lang } = useT();
   const patient = usePatientStore((s) => s.getById(patientId));
+  const displayName = patient ? getDisplayName(patient, lang) : undefined;
 
   const onShare = async () => {
     const facilityLine = referral.facility
       ? `\n${t("referralFacility")}: ${referral.facility}`
       : "";
     const message =
-      `SahAI Referral\n${patient ? `${patient.name}\n` : ""}${facilityLine}\n\n${referral.referralText}\n\n${referral.patientInstruction}`;
+      `SahAI Referral\n${displayName ? `${displayName}\n` : ""}${facilityLine}\n\n${referral.referralText}\n\n${referral.patientInstruction}`;
     try {
       await Share.share({ message });
     } catch {
@@ -46,7 +47,7 @@ export function ReferralScreen({ route, navigation }: ScreenProps<"Referral">) {
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{t("referralTitle")}</Text>
-          {!!patient && <Text style={styles.subtitle}>{patient.name}</Text>}
+          {!!displayName && <Text style={styles.subtitle}>{displayName}</Text>}
         </View>
       </View>
 

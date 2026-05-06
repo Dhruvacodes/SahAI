@@ -9,8 +9,13 @@ export type VisitType =
   | "ANC"
   | "PNC"
   | "SICK_CHILD"
+  | "NEONATAL"
   | "TB_FOLLOWUP"
   | "MALARIA_SCREENING"
+  | "EMERGENCY"
+  | "TRAUMA"
+  | "MENTAL_HEALTH"
+  | "NCD_SCREEN"
   | "OTHER";
 
 export type LanguageCode =
@@ -59,6 +64,24 @@ export interface Vitals {
   haemoglobin?: number | null;
   muacMm?: number | null;
   respiratoryRate?: number | null;
+
+  // Trauma / emergency-only fields. All optional and only used by trauma rules.
+  /** Glasgow Coma Scale total (3..15). */
+  gcs?: number | null;
+  /** Estimated external blood loss in millilitres. */
+  bloodLossMl?: number | null;
+  /** Numeric pain rating 0..10. */
+  painScore?: number | null;
+  /** Free-text mechanism of injury (also see Visit.mechanisms array). */
+  injuryMechanism?: string | null;
+  /** "open" / "closed" / "burn" / "abrasion" / "puncture" / null. */
+  wound?: string | null;
+  /** Boolean: is the patient maintaining a clear airway? */
+  airwayClear?: boolean | null;
+
+  // Paediatric / obstetric profile-derived helpers (passed through to engine).
+  ageMonths?: number | null;
+  gestationalDays?: number | null;
 }
 
 export interface PatientProfile {
@@ -67,6 +90,15 @@ export interface PatientProfile {
   isPostpartum?: boolean;
   daysPostpartum?: number;
   ageYears?: number;
+}
+
+export interface FiredRuleSummary {
+  id: string;
+  vertical?: string;
+  label?: string;
+  rationale?: string;
+  source?: { doc?: string; section?: string; url?: string };
+  ttt_minutes?: number;
 }
 
 export interface ExtractResponse {
@@ -85,6 +117,14 @@ export interface ExtractResponse {
     suspectedInjection: boolean;
     missingFields: string[];
   };
+  /** Rules from the protocol engine that fired for this visit (may be empty). */
+  firedRules?: FiredRuleSummary[];
+  /** Ordered first-response checklist derived from the fired rules. */
+  firstResponseActions?: Array<{ id: string; text: { en: string; [k: string]: string | undefined } }>;
+  /** Protocol pack version that produced firedRules. */
+  catalogVersion?: string;
+  /** Time-to-treatment in minutes (minimum across fired rules). */
+  ttt_minutes?: number;
 }
 
 export interface ReferralResponse {
@@ -104,7 +144,10 @@ export interface ReferralResponse {
 export interface Patient {
   id: string;
   ashaId: string;
+  /** Native-script name (Devanagari, Bangla, etc., or Latin if spoken in English). */
   name: string;
+  /** Roman/Latin transliteration. Rendered when UI language is English. */
+  nameLatin?: string;
   ageYears?: number;
   sex?: "F" | "M" | "O";
   isPregnant: boolean;

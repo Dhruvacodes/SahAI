@@ -96,7 +96,21 @@ async def transcribe_uploaded_audio(
             except OSError:
                 pass
     except ASRTranscriptionError as exc:
-        return JSONResponse(status_code=422, content={"error": exc.message})
+        # Map a few well-known upstream conditions to clearer messages so the
+        # ASHA worker sees something actionable instead of a raw SDK dump.
+        message = exc.message
+        hint: Optional[str] = None
+        lowered = message.lower()
+        if "audio too long" in lowered or "duration" in lowered:
+            hint = "Recording exceeded the 30-second STT cap. Long visits are now auto-split; please retry."
+        elif "audio too short" in lowered or "no body" in lowered or "empty" in lowered:
+            hint = "Recording was too short or silent. Please record again, closer to the patient."
+        elif "unsupported" in lowered:
+            hint = "Unsupported audio format. Please re-record from the microphone in the app."
+        return JSONResponse(
+            status_code=422,
+            content={"error": message, "hint": hint},
+        )
 
     duration_ms = int((time.perf_counter() - started_at) * 1000)
     # Return both `transcriptText` (mobile contract) and `transcript` (legacy) so either client works.

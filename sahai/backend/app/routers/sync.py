@@ -15,6 +15,7 @@ from app.db.session import get_db
 from app.models.patient import PatientORM
 from app.models.visit import VisitORM
 from app.schemas.privacy import ConsentSnapshot
+from app.services.alert_service import create_alert_from_visit
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,11 @@ class VisitRecordSchema(BaseModel):
     referralGenerated: bool
     followUpPlan: str
     syncedToCloud: bool
+    # Protocol-engine provenance (added in V4 / protocol-grounded overhaul).
+    firedRules: list[Dict[str, Any]] = []
+    firstResponseActions: list[Dict[str, Any]] = []
+    protocolVersion: Optional[str] = None
+    tttMinutes: Optional[int] = None
 
 
 @router.post("/sync/visit")
@@ -82,6 +88,39 @@ async def sync_visit(
 
     if visit.riskLevel in {"HIGH", "CRITICAL"}:
         notify_anm_supervisor(visit)
+        # Persist a severe-case alert for the supervisor dashboard. Idempotent:
+        # a re-sync of the same visit refreshes the urgency score but never
+        # overwrites the supervisor's recorded actions.
+        try:
+            persisted_visit = db.get(VisitORM, visit.id)
+            patient_row = db.get(PatientORM, visit.patientId)
+            patient_name = None
+            village = None
+            district = None
+            age_years = None
+            is_pregnant = False
+            if patient_row is not None:
+                patient_name = (
+                    getattr(patient_row, "nameLatin", None)
+                    or getattr(patient_row, "name", None)
+                )
+                village = getattr(patient_row, "village", None)
+                # PatientORM has no district column today; the dashboard
+                # resolves district from the seeded supervision data instead.
+                district = None
+                age_years = getattr(patient_row, "ageYears", None)
+                is_pregnant = bool(getattr(patient_row, "isPregnant", False))
+            create_alert_from_visit(
+                db,
+                visit=persisted_visit,
+                patient_name=patient_name,
+                village=village,
+                district=district,
+                age_years=age_years,
+                is_pregnant=is_pregnant,
+            )
+        except Exception:  # pragma: no cover — alerting must never break sync
+            logger.exception("Failed to persist severe-case alert for visit %s", visit.id)
 
     return {"status": "synced", "visitId": visit.id}
 
@@ -171,6 +210,10 @@ def _visit_to_orm_data(visit: VisitRecordSchema) -> Dict[str, Any]:
         "syncedToCloud": True,
         "syncedAt": datetime.now(timezone.utc),
         "updatedAt": datetime.now(timezone.utc),
+        "firedRules": visit.firedRules or [],
+        "firstResponseActions": visit.firstResponseActions or [],
+        "protocolVersion": visit.protocolVersion,
+        "tttMinutes": visit.tttMinutes,
     }
 
 

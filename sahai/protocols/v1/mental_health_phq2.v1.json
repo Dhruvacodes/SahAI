@@ -1,0 +1,58 @@
+{
+  "vertical": "MENTAL_HEALTH",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "MENTAL.PHQ2.POSITIVE",
+      "vertical": "MENTAL_HEALTH",
+      "label": { "en": "PHQ-2 positive (possible depression)", "hi": "अवसाद की संभावना" },
+      "trigger": {
+        "any_of": [
+          { "any_symptom_in": [
+            "feeling down",
+            "loss of interest",
+            "anhedonia",
+            "no interest in activities",
+            "udaasi",
+            "kuch acha nahi lagta",
+            "sad most days"
+          ] }
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "PHQ9_AT_PHC", "text": { "en": "Refer to PHC/CHC mental-health team for PHQ-9 confirmation and counselling." } },
+        { "id": "BRIEF_SUPPORT", "text": { "en": "Listen non-judgementally; reinforce that help is available; share Tele-MANAS 14416 hotline." } },
+        { "id": "RULE_OUT_SUICIDAL_INTENT", "text": { "en": "Ask explicitly about self-harm thoughts; if positive, escalate to HIGH and refer same day." } }
+      ],
+      "rationale": "PHQ-2 has high sensitivity for major depressive disorder; positive screen requires PHQ-9 confirmation and active suicide-risk assessment.",
+      "source": { "doc": "WHO-PHQ2" }
+    },
+    {
+      "id": "MENTAL.SUICIDAL.IDEATION",
+      "vertical": "MENTAL_HEALTH",
+      "label": { "en": "Suicidal ideation / self-harm intent", "hi": "आत्महत्या के विचार" },
+      "trigger": {
+        "any_symptom_in": [
+          "wants to die",
+          "self harm",
+          "suicide thoughts",
+          "khud ko nuksan",
+          "marna chahta hu",
+          "khudkushi",
+          "thoughts of suicide"
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "STAY_WITH", "text": { "en": "Stay with the person; remove access to pesticides, ropes, sharp items." } },
+        { "id": "TELE_MANAS_14416", "text": { "en": "Call Tele-MANAS 14416 immediately for live counsellor support." } },
+        { "id": "REFER_DMHP", "text": { "en": "Refer to District Mental Health Programme today; involve family safely." } }
+      ],
+      "rationale": "Active suicidal ideation is a psychiatric emergency. WHO mhGAP and India's NMHP mandate same-day specialist contact and means restriction.",
+      "source": { "doc": "WHO-PHQ2" }
+    }
+  ]
+}

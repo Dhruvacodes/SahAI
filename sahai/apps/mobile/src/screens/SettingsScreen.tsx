@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LanguageChip } from "../components/LanguageChip";
 import { useSettingsStore } from "../data/settingsStore";
-import { flushSyncQueue, useSyncStore } from "../data/syncQueue";
+import { flushSyncQueue, pendingCount, useSyncStore } from "../data/syncQueue";
 import { UI_LANGUAGES } from "../i18n/strings";
 import { useT } from "../i18n/useT";
 import { colors, radius, spacing, tapTargets, typography } from "../theme";
@@ -35,17 +35,40 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
   const setOnboarded = useSettingsStore((s) => s.setOnboarded);
   const setConsentHash = useSettingsStore((s) => s.setConsentHash);
   const isFlushing = useSyncStore((s) => s.isFlushing);
+  const lastFlushAt = useSyncStore((s) => s.lastFlushAt);
+  const lastResult = useSyncStore((s) => s.lastResult);
+  const lastErrors = useSyncStore((s) => s.lastErrors);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [urlInput, setUrlInput] = useState(backendUrl ?? "");
 
   const onSyncNow = async () => {
+    const queued = pendingCount();
     const result = await flushSyncQueue();
-    Alert.alert(
-      t("settingsSyncNow"),
-      `Patients: ${result.patientsSent}\nVisits: ${result.visitsSent}\nFailed: ${result.failed}`,
-    );
+    const lines = [
+      `Pending before: ${queued}`,
+      `Patients sent: ${result.patientsSent}`,
+      `Visits sent: ${result.visitsSent}`,
+      `Failed: ${result.failed}`,
+    ];
+    const recent = useSyncStore.getState().lastErrors[0];
+    if (result.failed > 0 && recent) {
+      lines.push("", `Last error (${recent.kind} ${recent.id.slice(0, 8)}\u2026):`, recent.message);
+    } else if (result.attempted === 0) {
+      lines.push("", "Nothing was queued for sync.");
+    }
+    Alert.alert(t("settingsSyncNow"), lines.join("\n"));
   };
+
+  const lastSyncSubtitle = (() => {
+    if (isFlushing) return "Syncing\u2026";
+    if (!lastFlushAt) return "Not synced yet";
+    const when = new Date(lastFlushAt).toLocaleString();
+    if (!lastResult) return `Last sync: ${when}`;
+    const { patientsSent, visitsSent, failed } = lastResult;
+    return `Last sync: ${when} \u00b7 ${patientsSent}/${visitsSent} ok, ${failed} failed`;
+  })();
+  const recentError = lastErrors[0];
 
   const onSignOut = () => {
     Alert.alert(t("settingsSignOut"), "", [
@@ -126,6 +149,12 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{t("settingsSyncNow")}</Text>
+            <Text style={styles.rowMeta}>{lastSyncSubtitle}</Text>
+            {!!recentError && (lastResult?.failed ?? 0) > 0 && (
+              <Text style={[styles.rowMeta, { color: colors.danger }]} numberOfLines={2}>
+                {recentError.message}
+              </Text>
+            )}
           </View>
           <ChevronRight color={colors.inkMuted} size={20} />
         </Pressable>

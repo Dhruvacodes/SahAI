@@ -1,0 +1,174 @@
+{
+  "vertical": "IMNCI",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "IMNCI.GENERAL.DANGER_SIGN",
+      "vertical": "IMNCI",
+      "label": { "en": "General danger sign (child 2 mo – 5 yr)", "hi": "बच्चे का खतरनाक संकेत" },
+      "applies_to": { "ageMonthsMin": 2, "ageMonthsMax": 59 },
+      "trigger": {
+        "any_symptom_in": [
+          "unable to drink",
+          "unable to breastfeed",
+          "convulsion",
+          "convulsing",
+          "lethargic",
+          "unconscious",
+          "vomits everything",
+          "stridor at rest",
+          "kuch nahi pee raha",
+          "behoshi"
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "REFER_URGENT", "text": { "en": "Refer URGENTLY to nearest hospital with IMNCI-trained team." } },
+        { "id": "GIVE_PARACETAMOL_IF_FEVER", "text": { "en": "If temp >= 38.5 °C, give paracetamol per IMNCI dose chart." } },
+        { "id": "WARM_AND_BREASTFEED", "text": { "en": "Keep the child warm and continue breastfeeding if able." } },
+        { "id": "PRE_REFERRAL_ABX", "text": { "en": "If trained: give first dose of pre-referral antibiotic (e.g. IM amoxicillin) per IMNCI guideline." } }
+      ],
+      "rationale": "MoHFW IMNCI Chart Booklet: any single general danger sign in a 2 mo – 5 yr child mandates urgent referral and pre-referral treatment.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "General Danger Signs" }
+    },
+    {
+      "id": "IMNCI.PNEUMONIA.SEVERE",
+      "vertical": "IMNCI",
+      "label": { "en": "Severe pneumonia (chest indrawing / stridor)", "hi": "गंभीर निमोनिया" },
+      "applies_to": { "ageMonthsMin": 2, "ageMonthsMax": 59 },
+      "trigger": {
+        "any_of": [
+          { "any_symptom_in": ["chest indrawing", "lower chest indrawing", "stridor", "saans seene mein dabna"] },
+          {
+            "all_of": [
+              { "any_symptom_in": ["cough", "fast breathing", "respiratory distress"] },
+              {
+                "any_of": [
+                  { "vitals.respiratoryRate_gte": 50 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "REFER_URGENT", "text": { "en": "Refer URGENTLY for hospital treatment." } },
+        { "id": "PRE_REFERRAL_ABX_IMNCI", "text": { "en": "If trained: give first dose of IM antibiotic per IMNCI dose chart." } },
+        { "id": "KEEP_WARM_BREASTFEED", "text": { "en": "Keep warm; continue breastfeeding." } }
+      ],
+      "rationale": "Chest indrawing or stridor at rest is the IMNCI definition of severe pneumonia and mandates pre-referral antibiotic + urgent transfer.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Cough or Difficult Breathing" }
+    },
+    {
+      "id": "IMNCI.PNEUMONIA.NONSEVERE",
+      "vertical": "IMNCI",
+      "label": { "en": "Pneumonia (non-severe, fast breathing)", "hi": "निमोनिया - तेज़ साँस" },
+      "applies_to": { "ageMonthsMin": 12, "ageMonthsMax": 59 },
+      "trigger": {
+        "all_of": [
+          { "any_symptom_in": ["cough", "fast breathing", "khansi"] },
+          { "vitals.respiratoryRate_gte": 40 }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "ORAL_AMOX", "text": { "en": "Give oral amoxicillin per IMNCI dose chart for 5 days." } },
+        { "id": "FOLLOW_UP_3_DAYS", "text": { "en": "Follow up in 3 days; advise return if breathing worsens, child cannot drink, or fever persists." } }
+      ],
+      "rationale": "RR >= 40 in 12–59 mo with cough is non-severe pneumonia per IMNCI; treat with oral amoxicillin and follow up in 3 days.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Cough or Difficult Breathing" }
+    },
+    {
+      "id": "IMNCI.DIARRHOEA.SEVERE_DEHYDRATION",
+      "vertical": "IMNCI",
+      "label": { "en": "Severe dehydration", "hi": "गंभीर पानी की कमी" },
+      "applies_to": { "ageMonthsMax": 59 },
+      "trigger": {
+        "any_symptom_in": [
+          "sunken eyes",
+          "skin pinch goes back very slowly",
+          "lethargic",
+          "unable to drink",
+          "very thirsty",
+          "ankhain dhansi",
+          "twacha pakad ke chodne par der"
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "PLAN_C_REFER", "text": { "en": "Plan C: refer urgently for IV fluids; en route give frequent sips of ORS." } },
+        { "id": "GIVE_ZINC_AT_FACILITY", "text": { "en": "Once stable, ensure ORS + zinc per IMNCI." } }
+      ],
+      "rationale": "IMNCI Plan C: any two of the four severe dehydration signs requires IV fluids; ORS en route is safe.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Diarrhoea - Plan C" }
+    },
+    {
+      "id": "IMNCI.DIARRHOEA.SOME_DEHYDRATION",
+      "vertical": "IMNCI",
+      "label": { "en": "Some dehydration", "hi": "कुछ पानी की कमी" },
+      "applies_to": { "ageMonthsMax": 59 },
+      "trigger": {
+        "any_symptom_in": [
+          "thirsty",
+          "restless",
+          "irritable",
+          "sunken eyes",
+          "skin pinch goes back slowly"
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "PLAN_B_ORS", "text": { "en": "Plan B: ORS 75 mL/kg over 4 hours under observation; reassess." } },
+        { "id": "ZINC_14_DAYS", "text": { "en": "Zinc 20 mg daily x 14 days (10 mg if < 6 mo)." } }
+      ],
+      "rationale": "IMNCI Plan B for some dehydration: supervised ORS + zinc; reassess in 4 hours for response or escalation.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Diarrhoea - Plan B" }
+    },
+    {
+      "id": "IMNCI.SAM",
+      "vertical": "IMNCI",
+      "label": { "en": "Severe acute malnutrition (MUAC < 115 mm or oedema)", "hi": "गंभीर तीव्र कुपोषण" },
+      "applies_to": { "ageMonthsMin": 6, "ageMonthsMax": 59 },
+      "trigger": {
+        "any_of": [
+          { "vitals.muacMm_lt": 115 },
+          { "any_symptom_in": ["bilateral pitting oedema", "feet swelling", "hand swelling"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "REFER_NRC", "text": { "en": "Refer to Nutrition Rehabilitation Centre (NRC) / facility-based SAM care." } },
+        { "id": "APPETITE_TEST", "text": { "en": "Counsel mother on appetite test and continued breastfeeding en route." } }
+      ],
+      "rationale": "MUAC < 115 mm or bilateral pitting oedema defines SAM; NRC admission per RBSK/MAA.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Malnutrition" }
+    },
+    {
+      "id": "IMNCI.MAM",
+      "vertical": "IMNCI",
+      "label": { "en": "Moderate acute malnutrition (MUAC 115–124 mm)", "hi": "मध्यम तीव्र कुपोषण" },
+      "applies_to": { "ageMonthsMin": 6, "ageMonthsMax": 59 },
+      "trigger": {
+        "all_of": [
+          { "vitals.muacMm_gte": 115 },
+          { "vitals.muacMm_lt": 125 }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "ENROLL_AWC_VHND", "text": { "en": "Enrol in AWC supplementary feeding; review weekly at VHND." } },
+        { "id": "DEWORM_AND_IFA", "text": { "en": "Deworming and IFA syrup per RBSK schedule." } }
+      ],
+      "rationale": "MUAC 115–124 mm is MAM; community-based management with weekly follow-up.",
+      "source": { "doc": "MoHFW-IMNCI-2018", "section": "Malnutrition" }
+    }
+  ]
+}

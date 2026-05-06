@@ -1,6 +1,8 @@
 import { ChevronRight, User } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { getDisplayName } from "../data/patientStore";
+import { useT } from "../i18n/useT";
 import { colors, radius, shadows, spacing, typography } from "../theme";
 import type { Patient } from "../types";
 
@@ -12,6 +14,7 @@ interface PatientCardProps {
 }
 
 export function PatientCard({ patient, onPress, subtitle, compact }: PatientCardProps) {
+  const { lang } = useT();
   const meta = buildMeta(patient);
   return (
     <Pressable
@@ -28,7 +31,7 @@ export function PatientCard({ patient, onPress, subtitle, compact }: PatientCard
       </View>
       <View style={styles.copy}>
         <Text style={styles.name} numberOfLines={1}>
-          {patient.name}
+          {getDisplayName(patient, lang)}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {subtitle ?? meta}

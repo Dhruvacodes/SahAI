@@ -1,0 +1,89 @@
+{
+  "vertical": "NCD",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "NCD.HTN.SEVERE",
+      "vertical": "NCD",
+      "label": { "en": "Severe hypertension (BP >= 180/110)", "hi": "बहुत ज़्यादा बीपी" },
+      "applies_to": { "isPregnant": false },
+      "trigger": {
+        "any_of": [
+          { "vitals.systolicBP_gte": 180 },
+          { "vitals.diastolicBP_gte": 110 }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 30,
+      "first_response_actions": [
+        { "id": "REST_15MIN_RECHECK", "text": { "en": "Sit the patient calmly for 15 minutes; recheck BP on the other arm." } },
+        { "id": "REFER_PHC_TODAY", "text": { "en": "If still >= 180/110 or any target-organ symptom (chest pain, breathlessness, vision change), refer to PHC/CHC same day." } }
+      ],
+      "rationale": "PEN protocol: BP >= 180/110 in non-pregnant adults is hypertensive crisis and warrants same-day evaluation.",
+      "source": { "doc": "MoHFW-PEN-2017", "section": "Hypertension" }
+    },
+    {
+      "id": "NCD.HTN.STAGE2",
+      "vertical": "NCD",
+      "label": { "en": "Hypertension stage 2 (>= 160/100)", "hi": "उच्च रक्तचाप - दूसरा चरण" },
+      "applies_to": { "isPregnant": false },
+      "trigger": {
+        "any_of": [
+          { "vitals.systolicBP_gte": 160 },
+          { "vitals.diastolicBP_gte": 100 }
+        ]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "REFER_PHC_TODAY", "text": { "en": "Refer to PHC for same-day medical officer review and PEN package initiation." } },
+        { "id": "LIFESTYLE_COUNSEL", "text": { "en": "Salt < 5 g/day, no tobacco, daily 30-min walk; explain medication adherence importance." } }
+      ],
+      "rationale": "Hypertension stage 2 in PEN package needs medical-officer review and likely two-drug therapy.",
+      "source": { "doc": "MoHFW-PEN-2017" }
+    },
+    {
+      "id": "NCD.HTN.STAGE1",
+      "vertical": "NCD",
+      "label": { "en": "Hypertension stage 1 (>= 140/90)", "hi": "उच्च रक्तचाप - पहला चरण" },
+      "applies_to": { "isPregnant": false },
+      "trigger": {
+        "any_of": [
+          { "vitals.systolicBP_gte": 140 },
+          { "vitals.diastolicBP_gte": 90 }
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "RECHECK_2_VISITS", "text": { "en": "Recheck BP at two further visits 1 week apart before labelling hypertension." } },
+        { "id": "PEN_PACKAGE_LINKAGE", "text": { "en": "Link with PEN package at HWC; record on NCD card." } }
+      ],
+      "rationale": "PEN definition of hypertension; ASHA-led screening with two-week confirmation prevents over-diagnosis.",
+      "source": { "doc": "MoHFW-PEN-2017" }
+    },
+    {
+      "id": "NCD.DIABETES.HYPER",
+      "vertical": "NCD",
+      "label": { "en": "Hyperglycaemia symptoms (?DM)", "hi": "मधुमेह के लक्षण" },
+      "trigger": {
+        "any_symptom_in": [
+          "frequent urination",
+          "polyuria",
+          "polydipsia",
+          "increased thirst",
+          "unexplained weight loss",
+          "barbar peshab",
+          "bahut pyaas"
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "RBS_AT_HWC", "text": { "en": "Refer to HWC for random blood-glucose check today." } }
+      ],
+      "rationale": "Classic osmotic symptoms warrant same-day RBS per PEN diabetes algorithm.",
+      "source": { "doc": "MoHFW-PEN-2017", "section": "Diabetes" }
+    }
+  ]
+}

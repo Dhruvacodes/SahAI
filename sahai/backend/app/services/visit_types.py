@@ -96,6 +96,66 @@ VISIT_TYPES: Dict[str, VisitType] = {
         "risk_rules_variant": "malaria_severity",
         "facility_type": "PHC",
     },
+    "EMERGENCY": {
+        "code": "EMERGENCY",
+        "label": "Emergency / acute event",
+        "extraction_focus": [
+            "systolicBP", "diastolicBP", "heartRate", "spO2", "respiratoryRate",
+            "temperature", "gcs", "painScore", "airwayClear",
+        ],
+        "danger_signs": [
+            "Airway compromise / not breathing normally",
+            "SpO2 < 90%",
+            "Shock (SBP < 90 or HR > 120)",
+            "Altered consciousness / GCS <= 12",
+        ],
+        "risk_rules_variant": "trauma_redflags",
+        "facility_type": "DH",
+    },
+    "TRAUMA": {
+        "code": "TRAUMA",
+        "label": "Injury / trauma",
+        "extraction_focus": [
+            "injuryMechanism", "wound", "bloodLossMl", "painScore",
+            "gcs", "systolicBP", "heartRate", "airwayClear",
+        ],
+        "danger_signs": [
+            "Penetrating injury (gunshot/stab)",
+            "Uncontrolled major bleeding",
+            "Severe head injury",
+            "Limb fracture or deformity",
+            "Major burn",
+            "Snake / animal bite",
+        ],
+        "risk_rules_variant": "trauma_redflags",
+        "facility_type": "DH",
+    },
+    "MENTAL_HEALTH": {
+        "code": "MENTAL_HEALTH",
+        "label": "Mental health screen / follow-up",
+        "extraction_focus": [
+            "phq2_anhedonia", "phq2_low_mood", "suicidal_ideation",
+            "sleep", "appetite",
+        ],
+        "danger_signs": ["Active suicidal ideation", "Self-harm intent"],
+        "risk_rules_variant": "mental_health_phq2",
+        "facility_type": "CHC",
+    },
+    "NCD_SCREEN": {
+        "code": "NCD_SCREEN",
+        "label": "NCD (PEN) screening",
+        "extraction_focus": [
+            "systolicBP", "diastolicBP", "fastingGlucose", "randomGlucose",
+            "tobaccoUse", "alcoholUse", "weight", "waistCircumference",
+        ],
+        "danger_signs": [
+            "BP >= 180/110",
+            "RBS >= 250 with symptoms",
+            "Tobacco / pre-cancerous oral lesion",
+        ],
+        "risk_rules_variant": "ncd_pen",
+        "facility_type": "PHC",
+    },
     "OTHER": {
         "code": "OTHER",
         "label": "General community visit",

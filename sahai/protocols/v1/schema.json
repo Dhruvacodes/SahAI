@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sahai.health/protocols/v1/schema.json",
+  "title": "SahAI Protocol Rule",
+  "description": "Schema enforced for every rule entry inside SahAI Protocol Pack v1. Rules are evaluated by a deterministic engine (Python on the server, TypeScript on the device); the schema is the contract both engines must honour.",
+  "type": "object",
+  "required": [
+    "id",
+    "vertical",
+    "label",
+    "trigger",
+    "escalates_to",
+    "ttt_minutes",
+    "rationale",
+    "source",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable rule identifier in DOTTED.UPPER_SNAKE form, e.g. ANC.PE.SEVERE.",
+      "pattern": "^[A-Z][A-Z0-9_]*(?:\\.[A-Z][A-Z0-9_]*)+$"
+    },
+    "vertical": {
+      "type": "string",
+      "enum": [
+        "ANC",
+        "PNC",
+        "PPH",
+        "IMNCI",
+        "HBNC",
+        "TRAUMA",
+        "FEVER",
+        "TB",
+        "MALARIA",
+        "BITE",
+        "MENTAL_HEALTH",
+        "NCD",
+        "RBSK",
+        "IDSP"
+      ]
+    },
+    "label": {
+      "type": "object",
+      "description": "Short human-readable label (one short clause). Always include `en`. Other languages optional.",
+      "required": ["en"],
+      "additionalProperties": { "type": "string" }
+    },
+    "applies_to": {
+      "type": "object",
+      "description": "Optional scope guard: rule fires only when these patient/visit attributes are also true.",
+      "properties": {
+        "isPregnant": { "type": "boolean" },
+        "isPostpartum": { "type": "boolean" },
+        "ageMonthsMax": { "type": "integer" },
+        "ageMonthsMin": { "type": "integer" },
+        "ageYearsMax": { "type": "integer" },
+        "ageYearsMin": { "type": "integer" },
+        "gestationalWeeksMin": { "type": "integer" },
+        "gestationalWeeksMax": { "type": "integer" },
+        "daysPostpartumMax": { "type": "integer" },
+        "daysPostpartumMin": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "trigger": {
+      "type": "object",
+      "description": "Boolean expression over the visit input. Composable via all_of/any_of/not.",
+      "additionalProperties": true
+    },
+    "escalates_to": {
+      "type": "string",
+      "enum": ["LOW", "MODERATE", "HIGH", "CRITICAL"],
+      "description": "Severity band this rule escalates the visit to when it fires."
+    },
+    "ttt_minutes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4320,
+      "description": "Time-to-treatment window in minutes. Used to compute supervisor urgency score and SLA. 0 = immediate."
+    },
+    "first_response_actions": {
+      "type": "array",
+      "description": "Ordered list of actions the ASHA worker (and supervisor) must perform before/at referral. Each action carries its own id so the dashboard can render checklists.",
+      "items": {
+        "type": "object",
+        "required": ["id", "text"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": {
+            "type": "object",
+            "required": ["en"],
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    },
+    "referral_text_templates": {
+      "type": "object",
+      "description": "Templates emitted in LOW/MODERATE referrals (and as constraints for HIGH/CRITICAL Sonnet packets). asha_to_phc is read by the receiving facility; patient_instruction is read aloud to the patient.",
+      "properties": {
+        "asha_to_phc": {
+          "type": "object",
+          "required": ["en"],
+          "additionalProperties": { "type": "string" }
+        },
+        "patient_instruction": {
+          "type": "object",
+          "required": ["en"],
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Single human-readable sentence explaining why this rule fires and what guideline justifies it."
+    },
+    "source": {
+      "type": "object",
+      "required": ["doc"],
+      "properties": {
+        "doc": { "type": "string", "description": "manifest.sources[].id reference." },
+        "section": { "type": "string" },
+        "url": { "type": "string", "format": "uri" }
+      }
+    },
+    "version": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "trigger_expression": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all_of": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/trigger_expression" }
+            }
+          },
+          "required": ["all_of"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any_of": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/trigger_expression" }
+            }
+          },
+          "required": ["any_of"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": { "$ref": "#/definitions/trigger_expression" }
+          },
+          "required": ["not"]
+        },
+        {
+          "type": "object",
+          "description": "Atomic clause - matches engine's vocabulary. Examples: vitals.systolicBP_gte: 160, any_symptom_in: ['headache','blurred_vision'], patient.isPregnant: true."
+        }
+      ]
+    }
+  }
+}

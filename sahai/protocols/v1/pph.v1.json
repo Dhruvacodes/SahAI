@@ -1,0 +1,71 @@
+{
+  "vertical": "PPH",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "PPH.PRIMARY",
+      "vertical": "PPH",
+      "label": { "en": "Primary postpartum haemorrhage", "hi": "प्रसवोपरांत रक्तस्राव" },
+      "applies_to": { "isPostpartum": true, "daysPostpartumMax": 1 },
+      "trigger": {
+        "any_of": [
+          { "vitals.bloodLossMl_gte": 500 },
+          { "any_symptom_in": ["heavy bleeding", "soaking pad", "khoon bahut", "haemorrhage", "rakta srava"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 0,
+      "first_response_actions": [
+        { "id": "UTERINE_MASSAGE", "text": { "en": "Perform firm bimanual fundal massage; help uterus contract." } },
+        { "id": "EMPTY_BLADDER", "text": { "en": "Encourage the woman to empty bladder; catheterise if trained." } },
+        { "id": "CALL_108_OBSTETRIC", "text": { "en": "Call 108 — request obstetric ambulance with blood-bank linked facility." } },
+        { "id": "PREPARE_OXYTOCIN_AT_PHC", "text": { "en": "Communicate to PHC/CHC: prepare oxytocin / methergine / TXA per Dakshata PPH protocol." } },
+        { "id": "KEEP_WARM_RAISE_LEGS", "text": { "en": "Keep the mother warm; raise her legs; record pad count and BP every 5 minutes." } }
+      ],
+      "rationale": "Estimated blood loss >= 500 mL after vaginal delivery (or saturated pads / clinical signs of shock) defines primary PPH per Dakshata; bimanual massage + uterotonics + transfer save lives.",
+      "source": { "doc": "MoHFW-DAKSHATA-2017", "section": "PPH Active Management" }
+    },
+    {
+      "id": "PPH.SECONDARY",
+      "vertical": "PPH",
+      "label": { "en": "Secondary PPH (24 h – 6 weeks postpartum)", "hi": "देर से प्रसवोपरांत रक्तस्राव" },
+      "applies_to": { "isPostpartum": true, "daysPostpartumMin": 1, "daysPostpartumMax": 42 },
+      "trigger": {
+        "any_symptom_in": ["heavy bleeding", "foul discharge", "khoon bahut", "vomiting", "fever postpartum"]
+      },
+      "escalates_to": "HIGH",
+      "ttt_minutes": 240,
+      "first_response_actions": [
+        { "id": "REFER_PHC_TODAY", "text": { "en": "Refer to PHC/CHC today for uterine assessment and possible retained products of conception." } },
+        { "id": "MONITOR_VITALS", "text": { "en": "Record BP, pulse, temperature; watch for signs of sepsis." } }
+      ],
+      "rationale": "Secondary PPH commonly indicates retained products or endometritis and requires same-day facility-based assessment.",
+      "source": { "doc": "MoHFW-DAKSHATA-2017", "section": "Secondary PPH" }
+    },
+    {
+      "id": "PNC.SEPSIS",
+      "vertical": "PNC",
+      "label": { "en": "Postpartum sepsis", "hi": "प्रसवोपरांत संक्रमण" },
+      "applies_to": { "isPostpartum": true, "daysPostpartumMax": 42 },
+      "trigger": {
+        "any_of": [
+          {
+            "all_of": [
+              { "vitals.temperature_gte": 38.5 },
+              { "any_symptom_in": ["foul discharge", "lower abdominal pain", "uterine tenderness"] }
+            ]
+          },
+          { "any_symptom_in": ["foul lochia", "rigors postpartum"] }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "REFER_FRU", "text": { "en": "Refer to FRU/CHC for IV antibiotics and obstetric review." } },
+        { "id": "MONITOR_VITALS", "text": { "en": "Monitor temperature, pulse, BP every 15 minutes en route." } }
+      ],
+      "rationale": "Maternal temperature >= 38.5 °C plus uterine tenderness or foul discharge in the first 42 postpartum days is presumed puerperal sepsis and needs IV antibiotics within an hour.",
+      "source": { "doc": "MoHFW-DAKSHATA-2017", "section": "Puerperal sepsis" }
+    }
+  ]
+}

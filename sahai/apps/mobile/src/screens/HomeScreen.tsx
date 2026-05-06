@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AnmInbox } from "../components/AnmInbox";
 import { BigMicButton } from "../components/BigMicButton";
 import { PatientCard } from "../components/PatientCard";
 import { SyncPill } from "../components/SyncPill";
@@ -86,6 +87,12 @@ export function HomeScreen({ navigation }: ScreenProps<"Home">) {
           </View>
           <Text style={styles.newPatientLabel}>{t("homeNewPatient")}</Text>
         </Pressable>
+
+        <AnmInbox
+          onPressItem={(_visitId, patientId) =>
+            navigation.navigate("PatientProfile", { patientId })
+          }
+        />
 
         <View style={styles.recentSection}>
           <Text style={styles.sectionTitle}>{t("homeRecentPatients")}</Text>

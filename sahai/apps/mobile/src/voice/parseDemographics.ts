@@ -18,6 +18,8 @@
 
 export interface ParsedDemographics {
   name?: string;
+  /** Roman/Latin transliteration of `name` for English UI display. */
+  nameLatin?: string;
   ageYears?: number;
   village?: string;
   phone?: string;
@@ -63,7 +65,7 @@ const DEVA_TO_TAG: Array<[RegExp, string]> = [
 
 // English number words → digits (10..99 covers all realistic ages).
 const NUM_WORDS: Record<string, number> = {
-  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  zero: 0, oh: 0, "o": 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
   fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
   nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
@@ -77,6 +79,128 @@ const NUM_WORDS_DEVA: Record<string, number> = {
   ट्वेंटी: 20, थर्टी: 30, फोर्टी: 40, फिफ्टी: 50, सिक्सटी: 60,
   सेवंटी: 70, ऐटी: 80, नाइंटी: 90,
 };
+
+// Single-digit word maps for phone-number expansion. We deliberately keep
+// these *separate* from `NUM_WORDS` because zero must map to "0" here whereas
+// age parsing wants no zero at all.
+const SINGLE_DIGITS_EN: Record<string, string> = {
+  zero: "0", oh: "0", o: "0", "0": "0",
+  one: "1", two: "2", three: "3", four: "4", five: "5",
+  six: "6", seven: "7", eight: "8", nine: "9",
+};
+
+// Hindi digit names in Devanagari (शून्य–नौ) and common alt spellings.
+const SINGLE_DIGITS_HI: Record<string, string> = {
+  "शून्य": "0", "सुन्ना": "0", "ज़ीरो": "0", "जीरो": "0",
+  "एक": "1",
+  "दो": "2",
+  "तीन": "3",
+  "चार": "4",
+  "पाँच": "5", "पांच": "5",
+  "छह": "6", "छः": "6",
+  "सात": "7",
+  "आठ": "8",
+  "नौ": "9",
+};
+
+// Bangla digit names (০-৯ words). Useful for Bengali/Assamese transcripts.
+const SINGLE_DIGITS_BN: Record<string, string> = {
+  "শূন্য": "0",
+  "এক": "1",
+  "দুই": "2",
+  "তিন": "3",
+  "চার": "4",
+  "পাঁচ": "5",
+  "ছয়": "6",
+  "সাত": "7",
+  "আট": "8",
+  "নয়": "9",
+};
+
+// Tamil digit names.
+const SINGLE_DIGITS_TA: Record<string, string> = {
+  "சுழியம்": "0",
+  "ஒன்று": "1",
+  "இரண்டு": "2",
+  "மூன்று": "3",
+  "நான்கு": "4",
+  "ஐந்து": "5",
+  "ஆறு": "6",
+  "ஏழு": "7",
+  "எட்டு": "8",
+  "ஒன்பது": "9",
+};
+
+// Telugu digit names.
+const SINGLE_DIGITS_TE: Record<string, string> = {
+  "సున్నా": "0",
+  "ఒకటి": "1",
+  "రెండు": "2",
+  "మూడు": "3",
+  "నాలుగు": "4",
+  "ఐదు": "5",
+  "ఆరు": "6",
+  "ఏడు": "7",
+  "ఎనిమిది": "8",
+  "తొమ్మిది": "9",
+};
+
+const SINGLE_DIGIT_TABLES: Array<Record<string, string>> = [
+  SINGLE_DIGITS_EN,
+  SINGLE_DIGITS_HI,
+  SINGLE_DIGITS_BN,
+  SINGLE_DIGITS_TA,
+  SINGLE_DIGITS_TE,
+];
+
+function wordToDigit(word: string): string | undefined {
+  const w = word.toLowerCase();
+  for (const table of SINGLE_DIGIT_TABLES) {
+    if (table[w] !== undefined) return table[w];
+    if (table[word] !== undefined) return table[word];
+  }
+  return undefined;
+}
+
+/**
+ * Expand spoken phone-number idioms into bare digit strings, e.g.
+ *   "double five"      -> "55"
+ *   "triple zero"      -> "000"
+ *   "ek do teen"       -> still words; covered by digit-table below
+ *   "एक दो तीन चार…"   -> "1234..."
+ *   "double 0 5 6"     -> "00 5 6"
+ *
+ * Operates on a tokenised copy of the text and returns the rebuilt string;
+ * existing digits and unrelated words pass through untouched.
+ */
+function expandPhoneDigitWords(text: string): string {
+  // First, normalise "double X" / "triple X" / "thrice X" to repeated tokens.
+  const repeaters: Array<[RegExp, number]> = [
+    [/\b(double|डबल|दो\s*बार)\s+(\S+)/giu, 2],
+    [/\b(triple|ट्रिपल|तीन\s*बार)\s+(\S+)/giu, 3],
+  ];
+  for (const [re, count] of repeaters) {
+    text = text.replace(re, (_m, _p1, p2: string) => {
+      // If `p2` is a single digit-word, output it `count` times (digits).
+      const d = wordToDigit(p2);
+      if (d !== undefined) return Array(count).fill(d).join(" ");
+      // If `p2` is already a digit string, repeat it.
+      if (/^\d$/.test(p2)) return Array(count).fill(p2).join(" ");
+      return Array(count).fill(p2).join(" ");
+    });
+  }
+
+  // Then, replace any standalone digit-word token with its digit.
+  text = text.replace(/\S+/g, (token) => {
+    // Strip trailing punctuation we might have left behind.
+    const stripped = token.replace(/[.,;:!?]+$/u, "");
+    if (!stripped) return token;
+    const d = wordToDigit(stripped);
+    return d !== undefined ? d + token.slice(stripped.length) : token;
+  });
+
+  return text;
+}
 
 function wordsToNumber(text: string): number | undefined {
   const tokens = text.toLowerCase().split(/[\s\-]+/).filter(Boolean);
@@ -239,17 +363,48 @@ export function parseDemographics(rawText: string | null | undefined): ParsedDem
   // ── PHONE ─────────────────────────────────────────────────────────────────
   // Indian mobile numbers: 10 digits starting with 6–9.
   // We already converted Devanagari digits to ASCII at normalizeDigits().
+  // We also expand spoken digit-words ("ek do teen", "एक दो तीन", "double 0",
+  // "triple five", "eight nine nine nine seven four three two one zero")
+  // into bare digits so the existing regexes can find them.
+  const phoneSearchSpaces = [
+    text,
+    expandPhoneDigitWords(text),
+    expandPhoneDigitWords(working),
+  ];
   const phoneRe = /\b([6-9]\d{9})\b/;
   const phoneSpacedRe = /\b([6-9](?:[\s\-]?\d){9})\b/;
-  const phoneMatch = text.match(phoneRe);
-  if (phoneMatch) {
-    result.phone = phoneMatch[1];
-  } else {
-    const spaced = text.match(phoneSpacedRe);
+  for (const space of phoneSearchSpaces) {
+    const direct = space.match(phoneRe);
+    if (direct) {
+      result.phone = direct[1];
+      break;
+    }
+    const spaced = space.match(phoneSpacedRe);
     if (spaced) {
       const digits = spaced[1].replace(/[\s\-]/g, "");
-      if (digits.length === 10) result.phone = digits;
+      if (digits.length === 10) {
+        result.phone = digits;
+        break;
+      }
     }
+    // Last-resort sweep: take *any* run of 10+ ASCII digits separated only by
+    // spaces and try the 6-9 anchor against the joined run.
+    const runs = space.match(/(?:\d[\s\-]*){9,15}/g);
+    if (runs) {
+      for (const run of runs) {
+        const digitsOnly = run.replace(/\D/g, "");
+        // We want exactly 10 digits starting 6-9.
+        for (let i = 0; i + 10 <= digitsOnly.length; i++) {
+          const slice = digitsOnly.slice(i, i + 10);
+          if (/^[6-9]\d{9}$/.test(slice)) {
+            result.phone = slice;
+            break;
+          }
+        }
+        if (result.phone) break;
+      }
+    }
+    if (result.phone) break;
   }
 
   // ── PREGNANT ──────────────────────────────────────────────────────────────
@@ -271,12 +426,13 @@ export function parseDemographics(rawText: string | null | undefined): ParsedDem
 /**
  * Heuristic check for "did the cheap parser actually understand this?".
  *
- * If false, the caller should fall back to the LLM extractor. We require at
- * minimum a name OR a phone — those are the irreplaceable identifying fields
- * a worker speaks for a new patient.
+ * If false, the caller should fall back to the LLM extractor. We now require
+ * **both** a name AND a phone before declaring victory — otherwise a worker
+ * who only managed to capture a name on the first take would never get the
+ * (very cheap) LLM fallback that could recover the phone number.
  */
 export function isParseConfident(parsed: ParsedDemographics): boolean {
-  if (parsed.name && parsed.name.trim().length >= 2) return true;
-  if (parsed.phone && parsed.phone.length === 10) return true;
-  return false;
+  const hasName = !!(parsed.name && parsed.name.trim().length >= 2);
+  const hasPhone = !!(parsed.phone && parsed.phone.length === 10);
+  return hasName && hasPhone;
 }

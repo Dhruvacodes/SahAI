@@ -33,7 +33,7 @@ def sanitize_transcript(text: str) -> str:
     return text
 
 
-# Plausibility ranges
+# Plausibility ranges. Numeric vitals only.
 RANGES = {
     "systolicBP": (50, 250),
     "diastolicBP": (30, 150),
@@ -44,7 +44,17 @@ RANGES = {
     "haemoglobin": (3.0, 20.0),
     "muacMm": (50, 200),
     "respiratoryRate": (10, 80),
+    # Trauma / emergency-only fields. Optional; the LLM produces None unless
+    # explicitly observed.
+    "gcs": (3, 15),
+    "bloodLossMl": (0, 5000),
+    "painScore": (0, 10),
+    "ageMonths": (0, 240),
+    "gestationalDays": (0, 315),
 }
+
+# Non-numeric trauma fields (passed through unvalidated).
+TRAUMA_PASSTHROUGH_FIELDS = ("injuryMechanism", "wound", "airwayClear")
 
 
 def validate_extraction(data: dict) -> dict:
@@ -73,7 +83,7 @@ def validate_extraction(data: dict) -> dict:
 def empty_extraction(language_code: str, suspected_injection: bool = False) -> dict:
     return {
         "visitType": "OTHER",
-        "vitals": {k: None for k in RANGES.keys()},
+        "vitals": {**{k: None for k in RANGES.keys()}, **{k: None for k in TRAUMA_PASSTHROUGH_FIELDS}},
         "symptoms": [],
         "chiefComplaint": "",
         "patientInstruction": "",

@@ -98,6 +98,43 @@ VOCAB_PATTERNS: List[Tuple[str, str]] = [
     (r"\bdoodh\s+nahi\s+aa\s+raha\b", "lactation failure"),
     (r"\bsthan\s+mein\s+dard\b", "breast pain"),
     (r"\bsthan\s+mein\s+gaanth\b", "breast lump"),
+
+    # === Trauma / injury vocabulary ============================================
+    # The legacy prompt never saw these, so the LLM extracted them as bland
+    # "pain" or "bleeding". Normalising up-front so both the LLM and the
+    # protocol engine's symptom-substring matcher have a fighting chance.
+    (r"\bgoli\s+(?:lagi|lag\s+gayi|chal\s+gayi|chali|maar)\b", "gunshot wound"),
+    (r"\bbandook\s+ki\s+goli\b", "gunshot wound"),
+    (r"\bchura\s+(?:laga|maara|ghuspa)\b", "stab wound"),
+    (r"\bchakku\s+(?:laga|maara)\b", "stab wound"),
+    (r"\bhaddi\s+(?:tooti|tut\s+gayi|tooth)\b", "fracture"),
+    (r"\bpair\s+(?:tut|tooth)\b", "leg fracture"),
+    (r"\bhaath\s+(?:tut|tooth)\b", "arm fracture"),
+    (r"\bjal\s+gaya\b", "burn"),
+    (r"\bjal(?:ne|na)\s+ki\s+chot\b", "burn"),
+    (r"\bsaap\s+(?:ne\s+)?kaata\b", "snake bite"),
+    (r"\bnaag\s+(?:ne\s+)?kaata\b", "snake bite"),
+    (r"\bkutta\s+(?:ne\s+)?kaata\b", "dog bite"),
+    (r"\bbandar\s+(?:ne\s+)?kaata\b", "monkey bite"),
+    (r"\bbichu\s+(?:ne\s+)?kaata\b", "scorpion sting"),
+    (r"\bgir\s+gaya\b", "fall"),
+    (r"\bdurghatna\b", "accident"),
+    (r"\bgaadi\s+(?:se\s+)?(?:lag|takkara|takkar)\b", "road traffic accident"),
+    (r"\bbahut\s+khoon\s+(?:beh\s+raha|nikal\s+raha|aa\s+raha)\b", "heavy bleeding"),
+    (r"\bkhoon\s+nahi\s+ruk\s+raha\b", "uncontrolled bleeding"),
+    (r"\bsir\s+mein\s+chot\b", "head injury"),
+    (r"\bbeshudh\b", "unconscious"),
+    (r"\bsaans\s+nahi\s+le\s+raha\b", "not breathing"),
+    (r"\bdard\s+(?:bahut|tez)\b", "severe pain"),
+    (r"\bdard\s+10\s+(?:mein\s+se\s+)?9\b", "pain score 9 of 10"),
+    (r"\bdard\s+10\s+(?:mein\s+se\s+)?10\b", "pain score 10 of 10"),
+
+    # === Mental-health vocabulary =============================================
+    (r"\bkhud\s*ko\s*nuksan\b", "self harm"),
+    (r"\bkhudkushi\b", "suicide"),
+    (r"\bmarna\s+chahta\b", "wants to die"),
+    (r"\budaasi\b", "low mood"),
+    (r"\bkuch\s+acha\s+nahi\s+lagta\b", "loss of interest"),
 ]
 
 

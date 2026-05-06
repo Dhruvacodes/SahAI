@@ -1,0 +1,52 @@
+{
+  "vertical": "MALARIA",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "MALARIA.SEVERE",
+      "vertical": "MALARIA",
+      "label": { "en": "Severe malaria (danger sign / cerebral)", "hi": "गंभीर मलेरिया" },
+      "trigger": {
+        "all_of": [
+          { "any_symptom_in": ["fever", "rigors", "bukhar", "kapkapi", "shivering"] },
+          {
+            "any_of": [
+              { "any_symptom_in": ["unconscious", "convulsion", "yellow eyes", "no urine", "very weak", "behoshi"] },
+              { "vitals.spO2_lt": 92 },
+              { "vitals.temperature_gte": 39.5 }
+            ]
+          }
+        ]
+      },
+      "escalates_to": "CRITICAL",
+      "ttt_minutes": 60,
+      "first_response_actions": [
+        { "id": "RDT_NOW", "text": { "en": "Perform bivalent malaria RDT now if available; record result." } },
+        { "id": "ARTESUNATE_AT_PHC", "text": { "en": "Communicate to PHC: prepare IV artesunate per National Drug Policy on Malaria." } },
+        { "id": "REFER_NOW", "text": { "en": "Refer urgently to PHC/CHC for parenteral therapy." } }
+      ],
+      "rationale": "Severe malaria (one or more WHO criteria) needs IV artesunate within an hour; in P. falciparum-endemic blocks the index of suspicion is high.",
+      "source": { "doc": "MoHFW-MALARIA-2016", "section": "Severe Malaria Management" }
+    },
+    {
+      "id": "MALARIA.UNCOMPLICATED.SUSPECT",
+      "vertical": "MALARIA",
+      "label": { "en": "Uncomplicated malaria suspect (fever + endemic block)", "hi": "मलेरिया का संदेह" },
+      "trigger": {
+        "all_of": [
+          { "any_symptom_in": ["fever", "bukhar", "rigors"] },
+          { "vitals.temperature_gte": 38.0 }
+        ]
+      },
+      "escalates_to": "MODERATE",
+      "ttt_minutes": 1440,
+      "first_response_actions": [
+        { "id": "RDT_TODAY", "text": { "en": "Perform RDT today; if positive, give ACT per Pf/Pv-specific schedule." } },
+        { "id": "PARACETAMOL", "text": { "en": "Give paracetamol weight-based; advise plenty of fluids." } },
+        { "id": "RETURN_IF_WORSE", "text": { "en": "Return immediately if drowsy, vomiting, no urine, breathing fast." } }
+      ],
+      "rationale": "ASHA-led RDT + ACT is the operational standard in malaria-endemic blocks; counsel return for danger signs to catch progression.",
+      "source": { "doc": "MoHFW-MALARIA-2016" }
+    }
+  ]
+}

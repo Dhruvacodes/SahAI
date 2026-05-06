@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: "📊" },
+  { href: "/dashboard/alerts", label: "Severe Alerts", icon: "🚨" },
   { href: "/dashboard/heatmap", label: "Heatmap", icon: "🗺️" },
   { href: "/dashboard/cost-privacy", label: "Cost & Privacy", icon: "💰" },
 ];

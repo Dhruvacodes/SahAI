@@ -117,6 +117,8 @@ export async function transcribeAudio(
 
 export interface DemographicsExtraction {
   name: string | null;
+  /** Roman/Latin transliteration of `name`, when the LLM can produce one. */
+  nameLatin: string | null;
   ageYears: number | null;
   village: string | null;
   phone: string | null;
@@ -156,6 +158,8 @@ export async function extractClinical(args: {
 export async function generateReferral(args: {
   extraction: ExtractResponse;
   ashaFacilityInfo?: { name?: string; phcName?: string; chcName?: string };
+  /** The patient-facing instruction is rendered/TTS'd in this language. */
+  languageCode?: string;
 }): Promise<ReferralResponse> {
   return fetchJson("/api/referral/generate", {
     method: "POST",
@@ -187,6 +191,12 @@ export async function syncVisit(visit: Visit): Promise<{ status: string; visitId
     referralGenerated: !!visit.referral,
     followUpPlan: visit.referral?.referralText ?? "",
     syncedToCloud: true,
+    // Protocol provenance forwarded so the dashboard / audit can cite the
+    // exact rule(s) that escalated this visit.
+    firedRules: (visit.extraction as unknown as { firedRules?: unknown[] }).firedRules ?? [],
+    firstResponseActions: (visit.extraction as unknown as { firstResponseActions?: unknown[] }).firstResponseActions ?? [],
+    protocolVersion: (visit.extraction as unknown as { catalogVersion?: string }).catalogVersion,
+    tttMinutes: (visit.extraction as unknown as { ttt_minutes?: number }).ttt_minutes,
   };
   return fetchJson("/api/sync/visit", {
     method: "POST",
@@ -203,6 +213,7 @@ export async function upsertPatient(patient: Patient): Promise<Patient> {
       id: patient.id,
       ashaId: patient.ashaId,
       name: patient.name,
+      nameLatin: patient.nameLatin ?? null,
       ageYears: patient.ageYears ?? null,
       sex: patient.sex ?? null,
       isPregnant: patient.isPregnant,
@@ -222,6 +233,103 @@ export async function listPatients(ashaId: string): Promise<Patient[]> {
     `/api/patient?ashaId=${encodeURIComponent(ashaId)}`,
     { method: "GET" },
   );
+}
+
+export interface AlertFeedbackItem {
+  alertId: string;
+  visitId: string;
+  patientId: string;
+  patientName: string | null;
+  riskLevel: "HIGH" | "CRITICAL";
+  status: "NEW" | "ACKNOWLEDGED" | "DISPATCHED" | "RESOLVED";
+  anmId: string | null;
+  acknowledgedAt: string | null;
+  dispatchedAt: string | null;
+  dispatchEtaMinutes: number | null;
+  dispatchNotes: string | null;
+  resolvedAt: string | null;
+  resolutionNotes: string | null;
+  updatedAt: string;
+}
+
+export interface AlertFeedbackResponse {
+  ashaId: string;
+  count: number;
+  items: AlertFeedbackItem[];
+  fetchedAt: string;
+}
+
+/**
+ * Poll the supervisor → ASHA feedback tail. The mobile client calls this
+ * every minute (when online) so the worker sees in real time when her
+ * HIGH/CRITICAL referrals get acknowledged, dispatched, or resolved by
+ * the ANM.
+ */
+export async function fetchAlertFeedback(args: {
+  ashaId: string;
+  since?: string;
+}): Promise<AlertFeedbackResponse> {
+  const params = new URLSearchParams({ ashaId: args.ashaId });
+  if (args.since) params.set("since", args.since);
+  return fetchJson(`/api/alerts/feedback?${params.toString()}`, { method: "GET" });
+}
+
+export interface ProtocolRuleDoc {
+  id: string;
+  vertical?: string;
+  label?: Record<string, string>;
+  rationale?: string;
+  source?: { doc?: string; section?: string; year?: number };
+  sourceDoc?: { id: string; title: string; url?: string; year?: number };
+  ttt_minutes?: number;
+  escalates_to?: string;
+  first_response_actions?: Array<{
+    id?: string;
+    text?: Record<string, string>;
+  }>;
+}
+
+/**
+ * Fetch a single protocol rule's documentation, used by the "Why this band?"
+ * panel to render the rationale and source citation. Falls back to the rule
+ * id alone when offline or on 404.
+ */
+export async function fetchProtocolRule(
+  ruleId: string,
+): Promise<ProtocolRuleDoc | null> {
+  try {
+    return await fetchJson<ProtocolRuleDoc>(
+      `/api/protocols/v1/rule/${encodeURIComponent(ruleId)}`,
+      { method: "GET" },
+    );
+  } catch {
+    return null;
+  }
+}
+
+export interface OverrideRequest {
+  visitId: string;
+  patientId: string;
+  ashaId: string;
+  engineLevel: string;
+  proposedLevel?: string;
+  reasonCode: string;
+  note?: string;
+  languageCode?: string;
+}
+
+/**
+ * Record an ASHA override of the engine's risk band. Server stores it as a
+ * structured ASHA_OVERRIDE audit event for protocol tuning.
+ */
+export async function postAshaOverride(
+  body: OverrideRequest,
+): Promise<{ auditId: string }> {
+  return fetchJson("/api/asha-override", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export { ApiError };
