@@ -4,66 +4,71 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 
-const NAV_ITEMS = ["Overview", "High Risk Cases", "Visit Log", "Settings"];
+const NAV_ITEMS = [
+  { href: "/dashboard", label: "Overview", icon: "📊" },
+  { href: "/dashboard/heatmap", label: "Heatmap", icon: "🗺️" },
+  { href: "/dashboard/cost-privacy", label: "Cost & Privacy", icon: "💰" },
+];
 
 /**
- * Renders the authenticated dashboard frame with sidebar and top bar.
- *
- * @param props - Shell props containing routed page content.
- * @param props.children - Page content rendered inside the main dashboard area.
- * @returns Dashboard layout chrome or a plain login layout for auth routes.
+ * Dashboard shell with sidebar navigation and user info.
  */
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function DashboardShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  if (pathname === "/login") {
-    return <main className="min-h-screen bg-slate-100">{children}</main>;
-  }
-
   return (
-    <div className="flex min-h-screen bg-slate-100 text-slate-950">
-      <aside className="flex w-64 shrink-0 flex-col bg-[#0f0f23] px-5 py-6 text-white">
-        <Link className="text-2xl font-black tracking-wide" href="/dashboard">
-          SahAI
-        </Link>
-        <nav className="mt-10 space-y-2">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              className="block rounded-md px-3 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
-              href={item === "Overview" ? "/dashboard" : "#"}
-              key={item}
-            >
-              {item}
-            </Link>
-          ))}
+    <div className="flex min-h-screen bg-slate-50">
+      {/* Sidebar */}
+      <aside className="w-64 bg-slate-900 text-white flex flex-col">
+        <div className="p-6">
+          <h2 className="text-xl font-black tracking-tight">SahAI</h2>
+          <p className="text-xs text-slate-400 mt-1">ANM Supervisor Dashboard</p>
+        </div>
+
+        <nav className="flex-1 px-3">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-emerald-600/20 text-emerald-400"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <span>{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
+
+        {/* User info + logout */}
+        <div className="p-4 border-t border-slate-800">
+          {user && (
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-white">{user.name}</p>
+              <p className="text-xs text-slate-400">{user.district} • {user.role}</p>
+            </div>
+          )}
+          <button
+            onClick={logout}
+            className="w-full text-left text-xs text-slate-400 hover:text-red-400 transition-colors"
+          >
+            ← Sign out
+          </button>
+        </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              SahAI Dashboard
-            </p>
-            <h1 className="text-lg font-black text-slate-950">Operations Console</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold text-slate-700">
-              {user?.name ?? "Dashboard User"}
-            </span>
-            <button
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-              onClick={() => void logout()}
-              type="button"
-            >
-              Logout
-            </button>
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
-      </div>
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }
-

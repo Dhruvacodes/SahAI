@@ -1,9 +1,0 @@
-
-> mobile@0.1.0 prestart
-> node ../../scripts/patch-expo-cli-node-builtins.js
-
-
-> mobile@0.1.0 start
-> expo start --lan --port 8081 --clear
-
-Starting project at C:\Users\Asus\Desktop\HACKATHONS\WitchHunt\sahai\apps\mobile

@@ -1,6 +1,8 @@
-"""AI model selection and inference-cost helpers."""
+"""AI model selection and inference-cost helpers — V3 aligned."""
 
 from __future__ import annotations
+
+from typing import Optional
 
 import os
 from dataclasses import dataclass
@@ -18,41 +20,52 @@ class ClaudeModelPolicy:
 
 
 CLAUDE_MODELS: dict[str, ClaudeModelPolicy] = {
-    "claude-sonnet-4-6": ClaudeModelPolicy(
-        model_id="claude-sonnet-4-6",
-        label="Claude Sonnet 4.6",
-        input_usd_per_mtok=3.0,
-        output_usd_per_mtok=15.0,
-        rationale=(
-            "Default for clinical extraction and referral drafting because it balances "
-            "multilingual quality, JSON reliability, reasoning, speed, and cost."
-        ),
-    ),
     "claude-haiku-4-5-20251001": ClaudeModelPolicy(
         model_id="claude-haiku-4-5-20251001",
         label="Claude Haiku 4.5",
         input_usd_per_mtok=1.0,
         output_usd_per_mtok=5.0,
         rationale=(
-            "Lower-cost option for non-critical readback or draft-only workflows after "
-            "clinical validation accepts the quality tradeoff."
+            "Default for extraction (80%+ of API calls). Fast, cheap, excellent JSON reliability. "
+            "With prompt caching, 90% input cost reduction on system prompt hits."
         ),
+    ),
+    "claude-sonnet-4-6": ClaudeModelPolicy(
+        model_id="claude-sonnet-4-6",
+        label="Claude Sonnet 4.6",
+        input_usd_per_mtok=3.0,
+        output_usd_per_mtok=15.0,
+        rationale=(
+            "Used only for HIGH/CRITICAL referral generation where clinical nuance matters. "
+            "~20% of visits need this; rest use free templates."
+        ),
+    ),
+    "claude-opus-4-7": ClaudeModelPolicy(
+        model_id="claude-opus-4-7",
+        label="Claude Opus 4.7",
+        input_usd_per_mtok=5.0,
+        output_usd_per_mtok=25.0,
+        rationale="Reserved. Not used in default pipeline due to cost.",
     ),
 }
 
-DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"
+DEFAULT_EXTRACTION_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_REFERRAL_MODEL = "claude-sonnet-4-6"
 
 
-def selected_claude_model() -> ClaudeModelPolicy:
-    """Return the configured Claude model policy."""
-    configured_model = os.getenv("ANTHROPIC_MODEL", DEFAULT_CLAUDE_MODEL).strip()
-    return CLAUDE_MODELS.get(configured_model, CLAUDE_MODELS[DEFAULT_CLAUDE_MODEL])
+def selected_claude_model(purpose: str = "extraction") -> ClaudeModelPolicy:
+    """Return the configured Claude model policy for a given purpose."""
+    if purpose == "referral":
+        model_id = os.getenv("ANTHROPIC_MODEL_SONNET", DEFAULT_REFERRAL_MODEL).strip()
+    else:
+        model_id = os.getenv("ANTHROPIC_MODEL_HAIKU", DEFAULT_EXTRACTION_MODEL).strip()
+    return CLAUDE_MODELS.get(model_id, CLAUDE_MODELS[DEFAULT_EXTRACTION_MODEL])
 
 
 def estimate_claude_cost_usd(
     input_tokens: int,
     output_tokens: int,
-    model_id: str | None = None,
+    model_id: Optional[str] = None,
 ) -> float:
     """Estimate token cost in USD for one Claude inference."""
     model = CLAUDE_MODELS.get(model_id or "", selected_claude_model())

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from dataclasses import dataclass
 
 
@@ -45,30 +47,48 @@ SUPPORTED_LANGUAGE_BY_CODE = {
 
 DEFAULT_LANGUAGE_CODE = "hi"
 
+# Pseudo language codes accepted by the API but not part of the Indian language
+# whitelist. These are first-class for routing decisions (auto-detect / English)
+# but should never be silently coerced to Hindi like older callers expected.
+PSEUDO_LANGUAGE_CODES = {"auto", "en"}
 
-def normalize_language_code(language_code: str | None) -> str:
-    """Return a supported language code, defaulting to Hindi for field demos."""
+
+def normalize_language_code(language_code: Optional[str]) -> str:
+    """Return a supported language code, defaulting to Hindi for field demos.
+
+    Accepts:
+      * any code in `SUPPORTED_INDIAN_LANGUAGES` (e.g. "hi", "ta", "bn-IN")
+      * "auto" / "unknown" — Sarvam auto-detect across Indian languages
+      * "en" / "en-IN" / "en-US" — English (also routed to Sarvam auto-detect
+        because Saarika emits Devanagari for forced "en-IN" Indian-accented speech)
+
+    Anything else falls back to Hindi.
+    """
     if not language_code:
         return DEFAULT_LANGUAGE_CODE
 
     normalized_code = language_code.strip().lower().replace("_", "-")
+    if normalized_code in {"auto", "unknown", "any"}:
+        return "auto"
     if normalized_code in SUPPORTED_LANGUAGE_BY_CODE:
         return normalized_code
 
     base_code = normalized_code.split("-", maxsplit=1)[0]
+    if base_code == "en":
+        return "en"
     if base_code in SUPPORTED_LANGUAGE_BY_CODE:
         return base_code
 
     return DEFAULT_LANGUAGE_CODE
 
 
-def language_display_name(language_code: str | None) -> str:
+def language_display_name(language_code: Optional[str]) -> str:
     """Return an English display name for a language code."""
     normalized_code = normalize_language_code(language_code)
     return SUPPORTED_LANGUAGE_BY_CODE[normalized_code].english_name
 
 
-def supported_language_payload() -> list[dict[str, str]]:
+def supported_language_payload() -> List[dict[str, str]]:
     """Return a serializable list of supported Indian languages."""
     return [
         {

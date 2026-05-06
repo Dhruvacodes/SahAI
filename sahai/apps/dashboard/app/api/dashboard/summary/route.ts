@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.FASTAPI_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 /**
  * Proxies dashboard summary requests to the FastAPI backend.

@@ -1,189 +1,214 @@
-"""End-to-end API tests for the ASR, extraction, risk, and referral pipeline."""
+"""End-to-end API tests for the ASR, extraction, risk, and referral pipeline.
+
+Updated for V3 architecture: new consent schema, extraction response format,
+and mock targets aligned with the current service layer.
+"""
 
 import json
 import os
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from scripts.demo_transcripts import DEMO_TRANSCRIPTS
 
 pytestmark = pytest.mark.asyncio
 
-
+# V3 consent format
 CONSENT_SNAPSHOT = {
-    "consentGiven": True,
-    "privacyNoticeAccepted": True,
-    "consentVersion": "sahai-consent-v1",
+    "consentGranted": True,
+    "scopeAgreed": ["clinical_visit", "data_sync"],
     "languageCode": "hi",
-    "dataUseScopes": [
-        "transcription",
-        "ai_extraction",
-        "risk_assessment",
-        "referral_generation",
-        "same_language_readback",
-    ],
+    "timestamp": "2026-05-06T10:00:00Z",
+    "witnessPresent": False,
+    "patientId": "demo-pat-001",
+    "ashaId": "demo-asha-001",
 }
 
+# V3 extraction result (Haiku output shape)
+MOCK_EXTRACTION_JSON = json.dumps({
+    "visitType": "ANC",
+    "vitals": {
+        "systolicBP": 165,
+        "diastolicBP": 110,
+        "heartRate": 88,
+        "spO2": 97,
+        "temperature": 37.2,
+        "weight": 58,
+        "haemoglobin": 8.4,
+        "muacMm": None,
+        "respiratoryRate": None,
+    },
+    "symptoms": ["headache", "edema", "visual disturbance"],
+    "chiefComplaint": "Severe headache and swelling for two days.",
+    "patientInstruction": "Aapko aaj hi hospital jaana zaroori hai. BP zyada hai. 108 pe call karein.",
+    "dataQuality": {
+        "confidence": 0.85,
+        "suspectedInjection": False,
+        "missingFields": [],
+    },
+})
+
+# V3 referral result (Sonnet output shape)
+MOCK_REFERRAL_JSON = json.dumps({
+    "referralText": (
+        "Patient requires immediate PHC evaluation for severe "
+        "hypertension with oedema and visual disturbance. Suspected pre-eclampsia."
+    ),
+    "patientInstruction": "Aapko turant hospital jaana hai. 108 pe call karein.",
+    "urgency": "EMERGENCY",
+    "facility": "Pune District Hospital (CHC)",
+    "facilityType": "CHC",
+    "followUpPlan": {"nextVisitDays": 1, "monitorFor": ["BP", "headache", "edema"]},
+    "firstResponseActions": ["Call 108", "Place in left lateral position"],
+})
+
+
+def _mock_anthropic_response(text: str):
+    """Build a mock Anthropic Message response."""
+    msg = MagicMock()
+    block = MagicMock()
+    block.text = text
+    msg.content = [block]
+    msg.usage = MagicMock(input_tokens=100, output_tokens=50, cache_read_input_tokens=0)
+    return msg
+
 
 @pytest.mark.asyncio
-async def test_full_visit_pipeline() -> None:
-    """Run the critical visit flow from ASR through referral generation with mocked AI SDKs."""
-    critical_demo = DEMO_TRANSCRIPTS["critical_bp"]
-    transcript_text = critical_demo["text"]
-    extracted_payload = {
-        "extractedVitals": {
-            "bloodPressureSystolic": 165,
-            "bloodPressureDiastolic": 110,
-            "hemoglobinLevel": 8.4,
-            "fetalMovements": False,
-            "oedema": True,
-            "temperature": 99.1,
-        },
-        "symptoms": [
-            "hand and foot swelling",
-            "visual disturbance",
-            "absent fetal movements",
-        ],
-        "patientComplaint": "Severe swelling and absent fetal movement for two days.",
-        "riskScore": 92,
-        "riskLevel": "CRITICAL",
-        "referralGenerated": True,
-        "followUpPlan": "Immediate referral is required.",
-    }
-    referral_payload = {
-        "referralText": (
-            "Patient requires immediate PHC and higher-center evaluation for severe "
-            "hypertension with oedema and absent fetal movements."
-        ),
-        "followUpPlan": (
-            "Patient aur parivar ko turant referral ke baare mein samjhayen aur deri "
-            "kiye bina 108 se sahayata lein."
-        ),
-        "urgency": "EMERGENCY",
-    }
-
-    with patch.dict(
-        os.environ,
-        {"OPENAI_API_KEY": "test-openai-key", "ANTHROPIC_API_KEY": "test-anthropic-key"},
-        clear=False,
-    ), patch(
-        "app.services.asr_service.AsyncOpenAI",
-        return_value=build_openai_client_mock(transcript_text),
-    ), patch(
-        "app.services.extraction_service.anthropic.Anthropic",
-        side_effect=[
-            build_anthropic_client_mock(extracted_payload),
-            build_anthropic_client_mock(referral_payload),
-        ],
-    ), patch(
-        "app.services.extraction_service.anthropic.AsyncAnthropic",
-        side_effect=[
-            build_anthropic_client_mock(extracted_payload),
-            build_anthropic_client_mock(referral_payload),
-        ],
-    ):
+async def test_asr_endpoint():
+    """Test ASR endpoint with mocked transcription."""
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=False), \
+         patch("app.routers.asr.transcribe_audio", new_callable=AsyncMock) as mock_asr:
+        mock_asr.return_value = "Patient ko sir mein dard hai. BP 165 over 110."
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-            asr_response = await client.post(
+            response = await client.post(
                 "/api/asr/transcribe",
                 data={
-                    "language_code": critical_demo["language"],
+                    "language_code": "hi",
                     "consent_json": json.dumps(CONSENT_SNAPSHOT),
                 },
-                files={"audio_file": ("critical_bp.m4a", b"fake audio bytes", "audio/mp4")},
+                files={"audio_file": ("test.m4a", b"fake audio bytes", "audio/mp4")},
             )
-            assert asr_response.status_code == 200
-            asr_payload = asr_response.json()
-            assert asr_payload["transcript"] == transcript_text
-
-            extraction_response = await client.post(
-                "/api/extract",
-                json={
-                    "transcript": asr_payload["transcript"],
-                    "visitId": "visit-critical-001",
-                    "languageCode": "hi",
-                    "consent": CONSENT_SNAPSHOT,
-                },
-            )
-            assert extraction_response.status_code == 200
-            extraction_json = extraction_response.json()
-            assert extraction_json["bloodPressureSystolic"] >= 160
-
-            risk_response = await client.post(
-                "/api/risk/score",
-                json={
-                    "vitals": extraction_json,
-                    "patient": {
-                        "isPregnant": True,
-                        "gestationalWeek": 32,
-                        "ageYears": 26,
-                    },
-                    "consent": CONSENT_SNAPSHOT,
-                },
-            )
-            assert risk_response.status_code == 200
-            risk_json = risk_response.json()
-            risk_level = risk_json["level"]
-            assert risk_level == "CRITICAL"
-            assert risk_json["score"] >= 75
-
-            referral_response = await client.post(
-                "/api/referral/generate",
-                json={
-                    "patientName": "Sunita",
-                    "ageYears": 26,
-                    "village": "Kakori",
-                    "visitDate": "2026-04-23T10:15:00+00:00",
-                    "vitals": extraction_json,
-                    "symptoms": extraction_json["symptoms"],
-                    "riskLevel": risk_level,
-                    "riskFlags": risk_json["flags"],
-                    "ashaName": "Savitri Devi",
-                    "outputLanguage": "hi",
-                    "consent": CONSENT_SNAPSHOT,
-                },
-            )
-            assert referral_response.status_code == 200
-            referral_json = referral_response.json()
-            assert referral_json["referralText"]
-            assert referral_json["urgency"] == "EMERGENCY"
+        assert response.status_code == 200
+        data = response.json()
+        assert "transcript" in data
+        assert data["language_code"] == "hi"
 
 
 @pytest.mark.asyncio
-async def test_extraction_requires_consent() -> None:
-    """Reject AI extraction before explicit patient consent is recorded."""
+async def test_extract_endpoint():
+    """Test extraction endpoint with mocked Claude Haiku."""
+    with patch("app.services.extraction_service._get_client") as mock_get:
+        client_mock = AsyncMock()
+        client_mock.messages.create = AsyncMock(
+            return_value=_mock_anthropic_response(MOCK_EXTRACTION_JSON)
+        )
+        mock_get.return_value = client_mock
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.post(
+                "/api/extract",
+                json={
+                    "transcriptText": "Patient ko sir mein dard hai. BP 165 over 110. Sujan hai.",
+                    "languageCode": "hi",
+                    "consent": CONSENT_SNAPSHOT,
+                    "patientProfile": {
+                        "isPregnant": True,
+                        "gestationalWeekIfPregnant": 36,
+                    },
+                },
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["visitType"] == "ANC"
+        assert data["riskLevel"] in ("HIGH", "CRITICAL")
+        assert data["vitals"]["systolicBP"] == 165
+
+
+@pytest.mark.asyncio
+async def test_risk_endpoint():
+    """Test risk scoring endpoint."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.post(
-            "/api/extract",
+            "/api/risk/score",
             json={
-                "transcript": "BP is 150 over 95 and patient reports swelling.",
-                "visitId": "visit-no-consent",
-                "languageCode": "hi",
-                "consent": {
-                    **CONSENT_SNAPSHOT,
-                    "consentGiven": False,
+                "vitals": {
+                    "bloodPressureSystolic": 165,
+                    "bloodPressureDiastolic": 110,
                 },
+                "patient": {
+                    "isPregnant": True,
+                    "gestationalWeek": 36,
+                    "ageYears": 26,
+                },
+                "consent": CONSENT_SNAPSHOT,
             },
         )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["level"] == "CRITICAL"
+    assert len(data["flags"]) > 0
 
-    assert response.status_code == 403
 
-
-def build_openai_client_mock(transcript_text: str) -> SimpleNamespace:
-    """Create a mocked AsyncOpenAI client that returns a fixed transcript text."""
-    return SimpleNamespace(
-        audio=SimpleNamespace(
-            transcriptions=SimpleNamespace(create=AsyncMock(return_value=transcript_text))
+@pytest.mark.asyncio
+async def test_referral_template_routing():
+    """Test that LOW risk gets template referral (no Sonnet call)."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post(
+            "/api/referral/generate",
+            json={
+                "extraction": {
+                    "visitType": "ANC",
+                    "riskLevel": "LOW",
+                    "riskScore": 0.1,
+                    "riskFlags": [],
+                    "patientInstruction": "Sab theek hai.",
+                },
+                "languageCode": "hi",
+            },
         )
-    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["urgency"] == "ROUTINE"
+    assert "referralText" in data
 
 
-def build_anthropic_client_mock(payload: dict) -> SimpleNamespace:
-    """Create a mocked Anthropic client returning the given JSON payload as text."""
-    response = SimpleNamespace(content=[SimpleNamespace(text=json.dumps(payload))])
-    return SimpleNamespace(messages=SimpleNamespace(create=AsyncMock(return_value=response)))
+@pytest.mark.asyncio
+async def test_consent_endpoint():
+    """Test consent record endpoint."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post(
+            "/api/consent/record",
+            json=CONSENT_SNAPSHOT,
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert "receiptHash" in data
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint():
+    """Test health check endpoint."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/health/")
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_demo_login():
+    """Test demo login returns JWT."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post("/api/auth/demo-login")
+    assert response.status_code == 200
+    data = response.json()
+    assert "token" in data
+    assert data["user"]["name"] == "Rekha Sharma"

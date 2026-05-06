@@ -2,18 +2,19 @@
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
-
-from app.services.consent_service import CONSENT_VERSION
+from pydantic import BaseModel
 
 
 class ConsentSnapshot(BaseModel):
-    """Patient consent state captured before AI-assisted processing."""
+    """Patient consent state captured before AI-assisted processing.
+    V3 format: consentGranted, scopeAgreed, patientId, ashaId.
+    """
 
-    consentGiven: bool
-    privacyNoticeAccepted: bool
-    consentVersion: str = CONSENT_VERSION
+    consentGranted: bool
+    scopeAgreed: List[str]
     languageCode: str = "hi"
-    dataUseScopes: List[str] = Field(default_factory=list)
-    recordedAt: Optional[str] = None
-    patientSignatureName: Optional[str] = None
+    timestamp: str = ""
+    witnessPresent: bool = False
+    patientId: str = ""
+    ashaId: str = ""
+    receiptHash: Optional[str] = None

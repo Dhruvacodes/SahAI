@@ -1,8 +1,10 @@
 """API routes for syncing offline mobile visit records to the backend."""
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Dict, Literal, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -10,6 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models.patient import PatientORM
 from app.models.visit import VisitORM
 from app.schemas.privacy import ConsentSnapshot
 
@@ -23,12 +26,12 @@ router = APIRouter(tags=["sync"])
 class ExtractedVitalsSchema(BaseModel):
     """Extracted vital signs attached to a synced visit."""
 
-    bloodPressureSystolic: float | None = None
-    bloodPressureDiastolic: float | None = None
-    hemoglobinLevel: float | None = None
-    fetalMovements: bool | None = None
-    oedema: bool | None = None
-    temperature: float | None = None
+    bloodPressureSystolic: Optional[float] = None
+    bloodPressureDiastolic: Optional[float] = None
+    hemoglobinLevel: Optional[float] = None
+    fetalMovements: Optional[bool] = None
+    oedema: Optional[bool] = None
+    temperature: Optional[float] = None
 
 
 class VisitRecordSchema(BaseModel):
@@ -44,7 +47,7 @@ class VisitRecordSchema(BaseModel):
     consent: ConsentSnapshot
     languageCode: str = "hi"
     riskScore: int
-    riskLevel: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    riskLevel: Literal["LOW", "MODERATE", "HIGH", "CRITICAL"]
     referralGenerated: bool
     followUpPlan: str
     syncedToCloud: bool
@@ -54,7 +57,7 @@ class VisitRecordSchema(BaseModel):
 async def sync_visit(
     visit: VisitRecordSchema,
     db: Session = Depends(get_db),
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Upsert a mobile visit record into PostgreSQL and trigger high-risk alerts.
 
     Args:
@@ -66,6 +69,8 @@ async def sync_visit(
     """
     visit_data = _visit_to_orm_data(visit)
     existing_visit = db.get(VisitORM, visit.id)
+
+    _ensure_patient_exists(db, visit)
 
     if existing_visit is None:
         db.add(VisitORM(**visit_data))
@@ -85,7 +90,7 @@ async def sync_visit(
 async def get_sync_status(
     ashaId: str,
     db: Session = Depends(get_db),
-) -> dict[str, int | str]:
+) -> Dict[str, Any]:
     """Return sync summary metadata for one ASHA worker.
 
     Args:
@@ -121,7 +126,33 @@ def notify_anm_supervisor(visit: VisitRecordSchema) -> None:
     )
 
 
-def _visit_to_orm_data(visit: VisitRecordSchema) -> dict[str, Any]:
+def _ensure_patient_exists(db: Session, visit: VisitRecordSchema) -> None:
+    """Cascade-create a placeholder patient row if the visit references an unknown id.
+
+    Visits should never fail to sync because the patient record happens to be
+    queued behind them. We insert the minimum required to satisfy a lookup;
+    a subsequent /api/patient upsert will fill in the rest.
+    """
+    existing = db.get(PatientORM, visit.patientId)
+    if existing is not None:
+        return
+
+    now = datetime.now(timezone.utc)
+    db.add(
+        PatientORM(
+            id=visit.patientId,
+            ashaId=visit.ashaId,
+            name="(pending sync)",
+            languageCode=visit.languageCode or "hi",
+            isPregnant=False,
+            isPostpartum=False,
+            createdAt=now,
+            updatedAt=now,
+        )
+    )
+
+
+def _visit_to_orm_data(visit: VisitRecordSchema) -> Dict[str, Any]:
     """Convert a VisitRecord request into SQLAlchemy model fields."""
     return {
         "id": visit.id,
@@ -143,7 +174,7 @@ def _visit_to_orm_data(visit: VisitRecordSchema) -> dict[str, Any]:
     }
 
 
-def _model_to_dict(model: BaseModel) -> dict[str, Any]:
+def _model_to_dict(model: BaseModel) -> Dict[str, Any]:
     """Convert a Pydantic model to a dictionary across Pydantic versions."""
     if hasattr(model, "model_dump"):
         return model.model_dump()
@@ -151,7 +182,7 @@ def _model_to_dict(model: BaseModel) -> dict[str, Any]:
     return model.dict()
 
 
-def _datetime_to_iso(value: datetime | None) -> str:
+def _datetime_to_iso(value: Optional[datetime]) -> str:
     """Convert an optional datetime into an ISO timestamp string."""
     if value is None:
         return ""

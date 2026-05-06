@@ -1,18 +1,19 @@
 """API routes for rule-based clinical risk scoring."""
 
+from __future__ import annotations
+
 from typing import Any, List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.routers.extraction import ExtractionResponse
 from app.schemas.privacy import ConsentSnapshot
 from app.services.consent_service import ConsentValidationError, validate_consent
 from app.services.risk_engine import calculate_risk_score
 
 RECOMMENDED_ACTIONS = {
     "LOW": "Continue routine monitoring. Next visit in 4 weeks.",
-    "MEDIUM": "Increase visit frequency. Notify ANM supervisor.",
+    "MODERATE": "Increase visit frequency. Notify ANM supervisor.",
     "HIGH": "Refer to PHC within 48 hours. Alert ANM immediately.",
     "CRITICAL": "Emergency referral NOW. Call 108. Do not wait.",
 }
@@ -20,18 +21,28 @@ RECOMMENDED_ACTIONS = {
 router = APIRouter(tags=["risk"])
 
 
+class VitalsInput(BaseModel):
+    """Extracted vitals for risk scoring — mirrors extraction output shape."""
+    bloodPressureSystolic: Optional[float] = None
+    bloodPressureDiastolic: Optional[float] = None
+    hemoglobinLevel: Optional[float] = None
+    fetalMovements: Optional[bool] = None
+    oedema: Optional[bool] = None
+    temperature: Optional[float] = None
+
+
 class PatientRiskProfile(BaseModel):
     """Patient metadata required for rule-based risk scoring."""
 
     isPregnant: bool
-    gestationalWeek: Optional[int]
+    gestationalWeek: Optional[int] = None
     ageYears: int
 
 
 class RiskRequest(BaseModel):
     """Risk scoring request containing extracted vitals and patient context."""
 
-    vitals: ExtractionResponse
+    vitals: VitalsInput
     patient: PatientRiskProfile
     consent: ConsentSnapshot
 
@@ -40,7 +51,7 @@ class RiskResponse(BaseModel):
     """Risk score response with clinical flags and recommended action."""
 
     score: int
-    level: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+    level: Literal["LOW", "MODERATE", "HIGH", "CRITICAL"]
     flags: List[str]
     recommendedAction: str
 
@@ -74,7 +85,7 @@ async def score_visit_risk(request: RiskRequest) -> RiskResponse:
     )
 
 
-def _model_to_dict(model: BaseModel) -> dict[str, Any]:
+def _model_to_dict(model: BaseModel) -> Dict[str, Any]:
     """Convert a Pydantic model to a dictionary across Pydantic versions."""
     if hasattr(model, "model_dump"):
         return model.model_dump()

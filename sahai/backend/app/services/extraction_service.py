@@ -1,44 +1,157 @@
-"""Health data extraction service backed by Anthropic Claude."""
+# backend/app/services/extraction_service.py
 
-import json
+from __future__ import annotations
+"""Claude Haiku extraction with prompt caching, sanitization, validation."""
 import os
-from json import JSONDecodeError
-from typing import Any
+import re
+import json
+import unicodedata
+import logging
+from typing import Optional
+from anthropic import AsyncAnthropic
+from app.prompts.extraction_system_prompts import build_extraction_user_message
 
-import anthropic
-from dotenv import load_dotenv
+log = logging.getLogger(__name__)
+MAX_TRANSCRIPT_CHARS = 8000
 
-from app.services.extraction_prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
-from app.services.language_policy import normalize_language_code
-from app.services.model_policy import selected_claude_model
-
-load_dotenv()
-
-REQUIRED_TOP_LEVEL_KEYS = (
-    "extractedVitals",
-    "symptoms",
-    "patientComplaint",
-    "riskScore",
-    "riskLevel",
-    "referralGenerated",
-    "followUpPlan",
-)
-
-REQUIRED_VITAL_KEYS = (
-    "bloodPressureSystolic",
-    "bloodPressureDiastolic",
-    "hemoglobinLevel",
-    "fetalMovements",
-    "oedema",
-    "temperature",
-)
+_client: Optional[AsyncAnthropic] = None
+def _get_client() -> AsyncAnthropic:
+    global _client
+    if _client is None:
+        _client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    return _client
 
 
+def sanitize_transcript(text: str) -> str:
+    if not text:
+        return ""
+    text = text[:MAX_TRANSCRIPT_CHARS]
+    text = unicodedata.normalize("NFKC", text)
+    # Strip control chars except newline/tab
+    text = "".join(ch for ch in text if ch in "\n\t" or not unicodedata.category(ch).startswith("C"))
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+# Plausibility ranges
+RANGES = {
+    "systolicBP": (50, 250),
+    "diastolicBP": (30, 150),
+    "heartRate": (30, 200),
+    "spO2": (50, 100),
+    "temperature": (34.0, 42.0),
+    "weight": (1, 200),
+    "haemoglobin": (3.0, 20.0),
+    "muacMm": (50, 200),
+    "respiratoryRate": (10, 80),
+}
+
+
+def validate_extraction(data: dict) -> dict:
+    """Clamp out-of-range numerics to None and add to missingFields."""
+    vitals = data.get("vitals", {})
+    missing = list(data.get("dataQuality", {}).get("missingFields", []))
+    for field, (lo, hi) in RANGES.items():
+        v = vitals.get(field)
+        if v is None:
+            continue
+        try:
+            num = float(v)
+            if not (lo <= num <= hi):
+                vitals[field] = None
+                if field not in missing:
+                    missing.append(field)
+        except (TypeError, ValueError):
+            vitals[field] = None
+            if field not in missing:
+                missing.append(field)
+    data.setdefault("dataQuality", {})["missingFields"] = missing
+    data["vitals"] = vitals
+    return data
+
+
+def empty_extraction(language_code: str, suspected_injection: bool = False) -> dict:
+    return {
+        "visitType": "OTHER",
+        "vitals": {k: None for k in RANGES.keys()},
+        "symptoms": [],
+        "chiefComplaint": "",
+        "patientInstruction": "",
+        "dataQuality": {
+            "confidence": 0.0,
+            "suspectedInjection": suspected_injection,
+            "missingFields": list(RANGES.keys()),
+        },
+    }
+
+
+async def extract_clinical_data(transcript: str, context: dict) -> dict:
+    """Extract structured clinical data from a transcript using Claude Haiku.
+    
+    context = {
+        "languageCode": str,
+        "visitTypeHint": Optional[str],
+        "patientProfile": dict,
+        "trendContext": str,
+        "velocityWarnings": list[str],
+    }
+    
+    Returns extraction dict matching schema in extraction_system_prompts.
+    Includes _meta with token usage for cost tracking.
+    """
+    sanitized = sanitize_transcript(transcript)
+    
+    if not sanitized or len(sanitized) < 5:
+        result = empty_extraction(context.get("languageCode", "en"))
+        result["_meta"] = {"input_tokens": 0, "output_tokens": 0, "cached": False}
+        return result
+    
+    messages = build_extraction_user_message(sanitized, context)
+    client = _get_client()
+    model = os.getenv("ANTHROPIC_MODEL_HAIKU", "claude-haiku-4-5-20251001")
+    
+    try:
+        response = await client.messages.create(
+            model=model,
+            max_tokens=1024,
+            messages=messages,
+        )
+    except Exception as e:
+        log.exception(f"Anthropic extraction call failed: {e}")
+        result = empty_extraction(context.get("languageCode", "en"))
+        result["_meta"] = {"input_tokens": 0, "output_tokens": 0, "cached": False, "error": str(e)}
+        return result
+    
+    # Parse JSON
+    raw_text = response.content[0].text if response.content else ""
+    # Strip markdown fences if model added them despite instructions
+    raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text.strip())
+    raw_text = re.sub(r"```\s*$", "", raw_text)
+    
+    try:
+        data = json.loads(raw_text)
+    except json.JSONDecodeError:
+        log.warning(f"Extraction returned invalid JSON: {raw_text[:200]}")
+        data = empty_extraction(context.get("languageCode", "en"))
+    
+    # Validate ranges
+    data = validate_extraction(data)
+    
+    # Attach token usage for cost tracking
+    usage = response.usage
+    data["_meta"] = {
+        "input_tokens": getattr(usage, "input_tokens", 0),
+        "output_tokens": getattr(usage, "output_tokens", 0),
+        "cached_input_tokens": getattr(usage, "cache_read_input_tokens", 0),
+        "model": model,
+    }
+    return data
+
+
+# === Legacy compatibility aliases ===
 class ExtractionParseError(Exception):
     """Raised when the extraction model returns a response that cannot be parsed."""
-
     def __init__(self, message: str, raw: str) -> None:
-        """Initialize a parse error with the raw model response."""
         super().__init__(message)
         self.message = message
         self.raw = raw
@@ -46,84 +159,31 @@ class ExtractionParseError(Exception):
 
 class ExtractionServiceError(Exception):
     """Raised when the extraction provider is unavailable or misconfigured."""
-
     def __init__(self, message: str, status_code: int) -> None:
-        """Initialize a service error with an HTTP-style status code."""
         super().__init__(message)
         self.message = message
         self.status_code = status_code
 
 
-async def extract_health_data(transcript: str, language_code: str = "hi") -> dict[str, Any]:
-    """Extract structured health data from a transcript using Claude.
-
-    Args:
-        transcript: Raw ASHA visit transcript text.
-        language_code: Requested language code for any patient-facing text fields.
-
-    Returns:
-        A validated dictionary containing extracted vitals, symptoms, risk, and follow-up data.
-
-    Raises:
-        ExtractionParseError: Raised when Claude returns invalid JSON.
-        ExtractionServiceError: Raised when the Claude API is unavailable or not configured.
-    """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ExtractionServiceError("ANTHROPIC_API_KEY is not configured", 503)
-
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    normalized_language_code = normalize_language_code(language_code)
-
-    try:
-        response = await client.messages.create(
-            model=selected_claude_model().model_id,
-            max_tokens=700,
-            temperature=0,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": USER_PROMPT_TEMPLATE.format(
-                        language_code=normalized_language_code,
-                        payload=json.dumps({"transcript": transcript}, ensure_ascii=False),
-                    ),
-                }
-            ],
-        )
-    except anthropic.APIError as exc:
-        raise ExtractionServiceError("Claude API unavailable", status_code=503) from exc
-
-    response_text = _get_response_text(response)
-    try:
-        parsed_data = json.loads(response_text)
-    except JSONDecodeError as exc:
-        raise ExtractionParseError("Claude returned invalid JSON", raw=response_text) from exc
-
-    if not isinstance(parsed_data, dict):
-        raise ExtractionParseError("Claude returned invalid JSON", raw=response_text)
-
-    return _validate_extracted_data(parsed_data)
-
-
-def _get_response_text(response: Any) -> str:
-    """Read the first text block from an Anthropic messages response."""
-    content_block = response.content[0]
-    return str(content_block.text)
-
-
-def _validate_extracted_data(parsed_data: dict[str, Any]) -> dict[str, Any]:
-    """Ensure extracted data contains every required key, filling missing values with None."""
-    validated_data: dict[str, Any] = {}
-
-    for key in REQUIRED_TOP_LEVEL_KEYS:
-        validated_data[key] = parsed_data.get(key)
-
-    extracted_vitals = validated_data["extractedVitals"]
-    if not isinstance(extracted_vitals, dict):
-        extracted_vitals = {}
-
-    validated_data["extractedVitals"] = {
-        key: extracted_vitals.get(key) for key in REQUIRED_VITAL_KEYS
+async def extract_health_data(transcript: str, language_code: str = "hi") -> dict:
+    """Legacy compatibility wrapper for the old extraction API."""
+    context = {"languageCode": language_code, "patientProfile": {}}
+    result = await extract_clinical_data(transcript, context)
+    # Map new schema to old schema for backward compat
+    vitals = result.get("vitals", {})
+    return {
+        "extractedVitals": {
+            "bloodPressureSystolic": vitals.get("systolicBP"),
+            "bloodPressureDiastolic": vitals.get("diastolicBP"),
+            "hemoglobinLevel": vitals.get("haemoglobin"),
+            "fetalMovements": None,
+            "oedema": None,
+            "temperature": vitals.get("temperature"),
+        },
+        "symptoms": result.get("symptoms", []),
+        "patientComplaint": result.get("chiefComplaint", ""),
+        "riskScore": None,
+        "riskLevel": None,
+        "referralGenerated": None,
+        "followUpPlan": result.get("patientInstruction", ""),
     }
-    return validated_data

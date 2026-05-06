@@ -1,131 +1,148 @@
-"""Deterministic clinical risk scoring for extracted ASHA visit data."""
+# backend/app/services/risk_engine.py
 
-from typing import Any
+from __future__ import annotations
+"""Deterministic, multi-factor risk engine. Pure Python rules, no ML.
+Mirrors apps/mobile/riskEngine.ts EXACTLY — keep both files in sync.
+"""
+from typing import Optional, List, Dict
+
+LEVEL_ORDER = ["LOW", "MODERATE", "HIGH", "CRITICAL"]
+LEVEL_SCORE = {"LOW": 0.10, "MODERATE": 0.40, "HIGH": 0.70, "CRITICAL": 0.92}
 
 
-def calculate_risk_score(vitals: dict, patient: dict) -> dict:
-    """Calculate a rule-based maternal and community health risk score.
+def _has_symptom(symptoms: List[str], needles: List[str]) -> bool:
+    text = " ".join(symptoms).lower()
+    return any(n.lower() in text for n in needles)
 
-    The engine uses explicit clinical rules for hypertension, oedema, anaemia,
-    fetal movement, and pregnancy age risk. These rules are intended for triage
-    support and should be reviewed by clinical stakeholders before production use.
 
-    Clinical basis for implemented rules:
-    - Severe hypertension can indicate hypertensive crisis or severe pre-eclampsia.
-    - Hypertension is a major cardiovascular and pregnancy risk marker.
-    - Raised systolic pressure in pregnancy can signal gestational hypertension.
-    - Oedema during pregnancy can accompany pre-eclampsia and needs escalation.
-    - Oedema outside pregnancy can still indicate systemic fluid retention.
-    - Severe anaemia substantially increases maternal and general health risk.
-    - Moderate anaemia can worsen fatigue, pregnancy outcomes, and recovery.
-    - Absent fetal movements after 28 weeks can indicate fetal distress.
-    - Pregnancy before adulthood is associated with higher maternal and neonatal risk.
-    - Pregnancy after age 35 has higher rates of obstetric complications.
-
-    Args:
-        vitals: Extracted vital signs using the ExtractedVitals key names.
-        patient: Patient context containing pregnancy status, gestational week, and age.
-
-    Returns:
-        A dictionary containing a capped score, risk level, and triggered flags.
+def score_risk(
+    vitals: Dict,
+    symptoms: List[str],
+    patient_profile: Dict,
+    velocity_warnings: Optional[List[str]] = None,
+) -> Dict:
     """
-    score = 0
-    flags: list[str] = []
-
-    systolic = _optional_float(vitals.get("bloodPressureSystolic"))
-    diastolic = _optional_float(vitals.get("bloodPressureDiastolic"))
-    hemoglobin = _optional_float(vitals.get("hemoglobinLevel"))
-    fetal_movements = vitals.get("fetalMovements")
-    oedema = vitals.get("oedema")
-
-    is_pregnant = bool(patient.get("isPregnant"))
-    gestational_week = _optional_int(patient.get("gestationalWeek"))
-    age_years = _optional_int(patient.get("ageYears"))
-
-    if _at_least(systolic, 160) or _at_least(diastolic, 110):
-        score += 40
-        flags.append("Severe hypertension - IMMEDIATE referral")
-
-    if _at_least(systolic, 140) or _at_least(diastolic, 90):
-        score += 25
-        flags.append("Hypertension detected")
-
-    if _at_least(systolic, 130) and is_pregnant:
-        score += 15
-        flags.append("Gestational hypertension risk")
-
-    if oedema is True and is_pregnant:
-        score += 20
-        flags.append("Oedema in pregnancy - pre-eclampsia risk")
-
-    if oedema is True and not is_pregnant:
-        score += 10
-        flags.append("Oedema detected")
-
-    if hemoglobin is not None and hemoglobin < 7.0:
-        score += 25
-        flags.append("Severe anaemia")
-
-    if hemoglobin is not None and hemoglobin < 10.0:
-        score += 15
-        flags.append("Moderate anaemia")
-
-    if fetal_movements is False and gestational_week is not None and gestational_week >= 28:
-        score += 30
-        flags.append("Absent fetal movements - EMERGENCY")
-
-    if is_pregnant and age_years is not None and age_years < 18:
-        score += 10
-        flags.append("Adolescent pregnancy - high risk")
-
-    if is_pregnant and age_years is not None and age_years > 35:
-        score += 5
-        flags.append("Advanced maternal age")
-
-    score = min(score, 100)
+    Returns: {"level": str, "score": float, "flags": List[str]}
+    """
+    if velocity_warnings is None:
+        velocity_warnings = []
+    flags: List[str] = []
+    max_level = "LOW"
+    
+    def escalate(to: str, reason: str):
+        nonlocal max_level
+        flags.append(reason)
+        if LEVEL_ORDER.index(to) > LEVEL_ORDER.index(max_level):
+            max_level = to
+    
+    sbp = vitals.get("systolicBP")
+    dbp = vitals.get("diastolicBP")
+    is_pregnant = patient_profile.get("isPregnant", False)
+    
+    # === Hypertension thresholds ===
+    if sbp is not None or dbp is not None:
+        s = sbp or 0
+        d = dbp or 0
+        if s >= 160 or d >= 110:
+            escalate("CRITICAL", "Severe hypertension (Stage 2)")
+        elif s >= 140 or d >= 90:
+            escalate("HIGH", "Hypertension (Stage 1)")
+        elif s >= 130 or d >= 85:
+            escalate("MODERATE", "Elevated BP (pre-hypertension)")
+    
+    # === Pre-eclampsia constellation ===
+    if is_pregnant and sbp and sbp >= 140:
+        if _has_symptom(symptoms, ["headache", "edema", "swelling", "visual", "blurred"]):
+            escalate("CRITICAL", "Suspected pre-eclampsia (BP + symptom cluster)")
+    
+    # === SpO2 ===
+    spo2 = vitals.get("spO2")
+    if spo2 is not None:
+        if spo2 < 90:
+            escalate("CRITICAL", "Severe hypoxia (SpO2 < 90%)")
+        elif spo2 < 94:
+            escalate("HIGH", "Low SpO2 (< 94%)")
+    
+    # === Heart rate ===
+    hr = vitals.get("heartRate")
+    if hr is not None:
+        if hr >= 130 or hr < 50:
+            escalate("HIGH", "Abnormal heart rate")
+    
+    # === Temperature / fever ===
+    temp = vitals.get("temperature")
+    if temp is not None:
+        if temp >= 39.0:
+            escalate("HIGH", f"High fever ({temp}°C)")
+        elif temp >= 38.0:
+            escalate("MODERATE", f"Fever ({temp}°C)")
+    
+    # === IMCI danger signs (sick child) ===
+    imci_red_flags = ["unable to drink", "convulsion", "lethargic", "stridor", "chest indrawing"]
+    if _has_symptom(symptoms, imci_red_flags):
+        escalate("CRITICAL", "IMCI danger sign present")
+    
+    # === MUAC (acute malnutrition) ===
+    muac = vitals.get("muacMm")
+    if muac is not None:
+        if muac < 115:
+            escalate("CRITICAL", "Severe acute malnutrition (MUAC < 115mm)")
+        elif muac < 125:
+            escalate("HIGH", "Moderate acute malnutrition (MUAC < 125mm)")
+        elif muac < 135:
+            escalate("MODERATE", "At-risk MUAC (< 135mm)")
+    
+    # === Postpartum sepsis ===
+    if patient_profile.get("isPostpartum", False):
+        if (temp is not None and temp >= 38.5) or _has_symptom(symptoms, ["foul discharge", "heavy bleeding"]):
+            escalate("CRITICAL", "Suspected postpartum sepsis")
+    
+    # === Velocity-based escalation ===
+    for w in velocity_warnings:
+        if "RAPID_BP_RISE" in w:
+            idx = LEVEL_ORDER.index(max_level)
+            if idx < len(LEVEL_ORDER) - 1:
+                max_level = LEVEL_ORDER[idx + 1]
+                flags.append(f"Trend escalation: {w}")
+    
+    # === Hemorrhage flags ===
+    if _has_symptom(symptoms, ["heavy bleeding", "haemorrhage"]):
+        escalate("CRITICAL", "Heavy bleeding reported")
+    
     return {
-        "score": score,
-        "level": _risk_level(score),
+        "level": max_level,
+        "score": LEVEL_SCORE[max_level],
         "flags": flags,
     }
 
 
-def _risk_level(score: int) -> str:
-    """Map a numeric risk score to the product risk level labels."""
-    if score <= 25:
-        return "LOW"
-
-    if score <= 50:
-        return "MEDIUM"
-
-    if score <= 75:
-        return "HIGH"
-
-    return "CRITICAL"
-
-
-def _at_least(value: float | None, threshold: float) -> bool:
-    """Check an optional numeric value against a threshold."""
-    return value is not None and value >= threshold
-
-
-def _optional_float(value: Any) -> float | None:
-    """Convert a value to float when present and numeric."""
-    if value is None:
-        return None
-
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _optional_int(value: Any) -> int | None:
-    """Convert a value to int when present and numeric."""
-    if value is None:
-        return None
-
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
+# === Legacy compatibility alias ===
+def calculate_risk_score(vitals: dict, patient: dict) -> dict:
+    """Legacy wrapper for the old risk scoring API used by /api/risk/score."""
+    # Map old vitals format to new
+    new_vitals = {
+        "systolicBP": vitals.get("bloodPressureSystolic"),
+        "diastolicBP": vitals.get("bloodPressureDiastolic"),
+        "haemoglobin": vitals.get("hemoglobinLevel"),
+        "temperature": vitals.get("temperature"),
+        "spO2": vitals.get("spO2"),
+        "heartRate": vitals.get("heartRate"),
+        "muacMm": vitals.get("muacMm"),
+    }
+    profile = {
+        "isPregnant": patient.get("isPregnant", False),
+        "isPostpartum": patient.get("isPostpartum", False),
+    }
+    symptoms = []
+    if vitals.get("oedema"):
+        symptoms.append("edema")
+    if vitals.get("fetalMovements") is False:
+        symptoms.append("reduced fetal movement")
+    
+    result = score_risk(new_vitals, symptoms, profile)
+    # Return in old format
+    return {
+        "score": int(result["score"] * 100),
+        "level": result["level"],
+        "flags": result["flags"],
+    }

@@ -17,7 +17,7 @@ type TopRiskPatient = {
   patientId: string;
   patientName: string;
   village: string;
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  riskLevel: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
   riskScore: number;
   lastVisitDate: string;
   topFlag: string;
@@ -202,7 +202,7 @@ function TableSkeleton() {
 function RiskBadge({ level }: { level: TopRiskPatient["riskLevel"] }) {
   const colorClass = {
     LOW: "bg-emerald-100 text-emerald-700",
-    MEDIUM: "bg-yellow-100 text-yellow-700",
+    MODERATE: "bg-yellow-100 text-yellow-700",
     HIGH: "bg-orange-100 text-orange-700",
     CRITICAL: "bg-red-100 text-red-700"
   }[level];

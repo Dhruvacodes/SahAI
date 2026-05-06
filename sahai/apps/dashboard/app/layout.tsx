@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DashboardShell } from "../components/DashboardShell";
+import DashboardShell from "../components/DashboardShell";
 import { AuthProvider } from "../context/AuthContext";
 import "./globals.css";
 

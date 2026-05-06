@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+type RiskLevel = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
 
 type DistrictRow = {
   name: string;
@@ -83,7 +83,7 @@ export default function DashboardHeatmapPage() {
     const districts = [...(data?.districts ?? [])];
     const severityOrder: Record<RiskLevel, number> = {
       LOW: 0,
-      MEDIUM: 1,
+      MODERATE: 1,
       HIGH: 2,
       CRITICAL: 3
     };
@@ -266,7 +266,7 @@ function SortableHeader({
 function RiskBadge({ level }: { level: RiskLevel }) {
   const colorClass = {
     LOW: "bg-emerald-100 text-emerald-700",
-    MEDIUM: "bg-yellow-100 text-yellow-700",
+    MODERATE: "bg-yellow-100 text-yellow-700",
     HIGH: "bg-orange-100 text-orange-700",
     CRITICAL: "bg-red-100 text-red-700"
   }[level];
@@ -309,7 +309,7 @@ function HeatmapTableSkeleton() {
 function getRowBackgroundClass(level: RiskLevel): string {
   return {
     LOW: "bg-green-50",
-    MEDIUM: "bg-yellow-50",
+    MODERATE: "bg-yellow-50",
     HIGH: "bg-orange-50",
     CRITICAL: "bg-red-50"
   }[level];
@@ -324,7 +324,7 @@ function getRowBackgroundClass(level: RiskLevel): string {
 function getProgressFillClass(level: RiskLevel): string {
   return {
     LOW: "bg-emerald-500",
-    MEDIUM: "bg-yellow-500",
+    MODERATE: "bg-yellow-500",
     HIGH: "bg-orange-500",
     CRITICAL: "bg-red-500"
   }[level];

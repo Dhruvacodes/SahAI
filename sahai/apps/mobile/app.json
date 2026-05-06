@@ -1,21 +1,50 @@
 {
   "expo": {
-    "name": "Sahai",
+    "name": "SahAI",
     "slug": "sahai-mobile",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "sahai",
     "splash": {
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0E6B6E"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sahai.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "SahAI uses the microphone so the ASHA worker can dictate visit notes in her own language.",
+        "NSSpeechRecognitionUsageDescription": "SahAI converts dictated visit notes into structured records for the ASHA worker."
+      }
     },
-    "android": {},
-    "web": {}
+    "android": {
+      "package": "com.sahai.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E6B6E"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "sahai-mobile"
+      }
+    },
+    "plugins": [
+      "expo-localization",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow SahAI to record visit notes in your voice."
+        }
+      ]
+    ]
   }
 }
-

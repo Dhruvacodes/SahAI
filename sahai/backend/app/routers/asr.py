@@ -1,5 +1,9 @@
 """ASR API routes for transcribing uploaded audio files."""
 
+from __future__ import annotations
+
+from typing import Dict, Optional
+
 import json
 import time
 
@@ -8,20 +12,25 @@ from fastapi.responses import JSONResponse
 
 from app.schemas.privacy import ConsentSnapshot
 from app.services.consent_service import ConsentValidationError, validate_consent
-from app.services.asr_service import ASRTranscriptionError, transcribe_audio
-from app.services.language_policy import SUPPORTED_LANGUAGE_BY_CODE, normalize_language_code
+from app.services.asr_service import ASRTranscriptionError, transcribe_audio, transcribe_audio_from_path
+from app.services.language_policy import (
+    PSEUDO_LANGUAGE_CODES,
+    SUPPORTED_LANGUAGE_BY_CODE,
+    normalize_language_code,
+)
 
-SUPPORTED_LANGUAGE_CODES = set(SUPPORTED_LANGUAGE_BY_CODE)
+# Pseudo codes ("auto", "en") are first-class — Sarvam runs auto-detect for them.
+SUPPORTED_LANGUAGE_CODES = set(SUPPORTED_LANGUAGE_BY_CODE) | PSEUDO_LANGUAGE_CODES
 
 router = APIRouter(tags=["asr"])
 
 
 @router.post("/transcribe")
 async def transcribe_uploaded_audio(
-    audio_file: UploadFile | None = File(None),
-    language_code: str | None = Form(None),
-    consent_json: str | None = Form(None),
-) -> dict[str, object]:
+    audio_file: Optional[UploadFile] = File(None),
+    language_code: Optional[str] = Form(None),
+    consent_json: Optional[str] = Form(None),
+) -> Dict[str, object]:
     """Transcribe an uploaded audio file using the selected ASR language.
 
     Args:
@@ -71,16 +80,32 @@ async def transcribe_uploaded_audio(
             content={"error": "audio_file must not be empty."},
         )
 
+    import tempfile
+    import os
     started_at = time.perf_counter()
     try:
-        transcript = await transcribe_audio(audio_bytes, normalized_language_code)
+        # Write to temp file so sarvam_service can use file-path API
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+        try:
+            result = await transcribe_audio_from_path(tmp_path, normalized_language_code)
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
     except ASRTranscriptionError as exc:
         return JSONResponse(status_code=422, content={"error": exc.message})
 
     duration_ms = int((time.perf_counter() - started_at) * 1000)
+    # Return both `transcriptText` (mobile contract) and `transcript` (legacy) so either client works.
     return {
-        "transcript": transcript,
+        "transcriptText": result["transcript"],
+        "transcript": result["transcript"],
         "language_code": normalized_language_code,
+        "provider": result.get("provider", "sarvam"),
+        "model": result.get("model", "saaras:v3"),
         "duration_ms": duration_ms,
     }
 

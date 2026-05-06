@@ -27,7 +27,7 @@ DEMO_TRANSCRIPTS = {
             "Aaj BP 142/92 tha. Halka sar dard hai lekin sujan nahi hai aur bacche ki harkat theek hai."
         ),
         "language": "hi",
-        "expectedRiskLevel": "MEDIUM",
+        "expectedRiskLevel": "MODERATE",
     },
     # This case tests a healthy low-risk antenatal follow-up with normal vitals.
     "low_risk_healthy": {

@@ -99,7 +99,7 @@ export interface VisitRecord {
   /** Numeric risk score for the visit, ranging from 0 to 100. */
   riskScore: number;
   /** Risk category assigned from the visit assessment. */
-  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  riskLevel: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
   /** Whether a referral note was generated for this visit. */
   referralGenerated: boolean;
   /** Recommended follow-up plan for the patient. */
